@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -78,6 +79,36 @@ const mockInvoices: Invoice[] = [
 ];
 
 export function ComplianceTable() {
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const res = await fetch('/api/compliance');
+        const data = await res.json();
+
+        if (data.records) {
+          // Map DB response to frontend interface
+          const mapped: Invoice[] = data.records.map((r: any) => ({
+            id: r.id,
+            date: r.invoice_date,
+            vendor: r.vendor_name,
+            gstin: r.gstin,
+            status: r.status,
+            amount: r.amount
+          }));
+          setInvoices(mapped);
+        }
+      } catch (e) {
+        console.error("Failed to fetch compliance data", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
+
   const formatAmount = (amount: number) => {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
@@ -85,6 +116,10 @@ export function ComplianceTable() {
       minimumFractionDigits: 0,
     }).format(amount);
   };
+
+  if (loading) {
+    return <div className="p-4 font-mono text-xs">LOADING DATA...</div>;
+  }
 
   return (
     <div className="relative border border-foreground bg-background">
@@ -100,7 +135,7 @@ export function ComplianceTable() {
           </div>
         </div>
         <div className="text-[10px] font-mono text-muted-foreground">
-          {mockInvoices.length} RECORDS
+          {invoices.length} RECORDS
         </div>
       </div>
 
@@ -117,9 +152,9 @@ export function ComplianceTable() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {mockInvoices.map((invoice) => {
+          {invoices.map((invoice) => {
             const isFailed = invoice.status === "Failed";
-            
+
             return (
               <TableRow
                 key={invoice.id}
@@ -130,7 +165,7 @@ export function ComplianceTable() {
               >
                 {/* Failed row indicator - left stripe */}
                 {isFailed && (
-                  <td 
+                  <td
                     className="absolute left-0 top-0 bottom-0 w-1 bg-danger"
                     style={{ padding: 0 }}
                   />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { ComplianceTable } from "@/components/dashboard/ComplianceTable";
@@ -9,6 +9,35 @@ import { Button } from "@/components/ui/button";
 
 const Index = () => {
   const [isScanModalOpen, setIsScanModalOpen] = useState(false);
+  const [stats, setStats] = useState({
+    total_outstanding: 0,
+    itc_at_risk: 0,
+    safe_to_pay: 0
+  });
+
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        const res = await fetch('/api/compliance');
+        const data = await res.json();
+        if (data.stats) {
+          setStats(data.stats);
+        }
+      } catch (e) {
+        console.error("Failed to fetch stats", e);
+      }
+    }
+    fetchStats();
+  }, []);
+
+  const formatCurrency = (val: number) => {
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      minimumFractionDigits: 0,
+    }).format(val);
+  };
+
 
   return (
     <DashboardLayout
@@ -50,19 +79,19 @@ const Index = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <StatCard
           label="TOTAL OUTSTANDING"
-          value="₹1,45,000"
+          value={formatCurrency(stats.total_outstanding)}
           variant="default"
           icon={<TrendingUp className="h-4 w-4" />}
         />
         <StatCard
           label="ITC AT RISK"
-          value="₹24,000"
+          value={formatCurrency(stats.itc_at_risk)}
           variant="danger"
           icon={<ShieldAlert className="h-4 w-4" />}
         />
         <StatCard
           label="SAFE TO PAY"
-          value="₹1,21,000"
+          value={formatCurrency(stats.safe_to_pay)}
           variant="success"
         />
       </div>
