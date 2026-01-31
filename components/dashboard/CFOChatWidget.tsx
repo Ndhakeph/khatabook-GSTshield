@@ -12,16 +12,46 @@ export function CFOChatWidget() {
     { role: "ai", text: "> Ask me anything about your finances, taxes, or compliance..." },
   ]);
 
-  const handleSend = () => {
-    if (!message.trim()) return;
-    
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSend = async () => {
+    if (!message.trim() || isLoading) return;
+
+    const userMessage = message;
+    setMessage("");
+
     setMessages((prev) => [
       ...prev,
-      { role: "user", text: message },
-      { role: "ai", text: `> Processing query: "${message}"...` },
-      { role: "ai", text: "> Based on your Q3 data, I recommend reviewing your ITC claims for the Swiggy invoices." },
+      { role: "user", text: userMessage },
     ]);
-    setMessage("");
+
+    setIsLoading(true);
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMessage })
+      });
+
+      const data = await res.json();
+
+      if (data.reply) {
+        setMessages((prev) => [
+          ...prev,
+          { role: "ai", text: data.reply },
+        ]);
+      } else {
+        throw new Error(data.error || "Failed to get response");
+      }
+    } catch (error) {
+      setMessages((prev) => [
+        ...prev,
+        { role: "ai", text: "> ERROR: Unable to connect to AI core. Please check API configuration." },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleOpen = () => {
@@ -61,8 +91,8 @@ export function CFOChatWidget() {
           // Mobile: full screen when open
           "inset-0 lg:inset-auto",
           // Visibility states
-          isOpen 
-            ? "translate-y-0 opacity-100" 
+          isOpen
+            ? "translate-y-0 opacity-100"
             : "translate-y-full lg:translate-y-8 opacity-0 pointer-events-none",
           // Minimized state (desktop only)
           isMinimized && "lg:h-auto"
@@ -77,8 +107,8 @@ export function CFOChatWidget() {
           </div>
           <div className="flex items-center gap-2">
             {/* Minimize button - desktop only */}
-            <button 
-              onClick={toggleMinimize} 
+            <button
+              onClick={toggleMinimize}
               className="hover:opacity-70 hidden lg:block"
             >
               {isMinimized ? (
@@ -146,7 +176,7 @@ export function CFOChatWidget() {
 
       {/* Backdrop for mobile */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40 bg-foreground/50 lg:hidden"
           onClick={handleClose}
         />

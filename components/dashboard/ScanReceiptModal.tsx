@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from "react";
-import { Upload, X, ScanLine, Camera, AlertTriangle, ShieldX, Ban, CreditCard } from "lucide-react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { Upload, X, ScanLine, Camera, AlertTriangle, ShieldX, Ban, CreditCard, CheckCircle2, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -8,231 +8,215 @@ interface ScanReceiptModalProps {
   onClose: () => void;
 }
 
-type ScanState = "upload" | "processing" | "result";
+type ScanState = "upload" | "processing" | "result" | "error";
 
-const processingLogs = [
-  { text: "INITIALIZING SCAN MODULE...", delay: 0 },
-  { text: "EXTRACTING TEXT FROM IMAGE...", delay: 400 },
-  { text: "IDENTIFYING VENDOR...", delay: 800 },
-  { text: "> Found: SWIGGY TECHNOLOGIES PVT LTD", delay: 1200 },
-  { text: "EXTRACTING GSTIN...", delay: 1600 },
-  { text: "> Found GSTIN: 29AABCU9603R1ZM", delay: 2000 },
-  { text: "PINGING GST PORTAL...", delay: 2400 },
-  { text: "CHECKING RETURN FILING STATUS...", delay: 2800 },
-  { text: "QUERYING GSTR-1 DATABASE...", delay: 3200 },
-  { text: "QUERYING GSTR-3B DATABASE...", delay: 3600 },
-  { text: "⚠ WARNING: COMPLIANCE ISSUE DETECTED", delay: 4000, isWarning: true },
-  { text: "GENERATING RISK ASSESSMENT...", delay: 4400 },
-  { text: "ANALYSIS COMPLETE.", delay: 4800, isComplete: true },
-];
+interface ScannedData {
+  vendor_name?: string;
+  gstin?: string;
+  invoice_date?: string;
+  total_amount?: number;
+  status?: string;
+  compliance_issues?: string[];
+}
 
-const matrixChars = "アイウエオカキクケコサシスセソタチツテト0123456789ABCDEF";
-
-function MatrixBackground() {
-  const columns = 30;
-
+function DotGridBackground() {
   return (
-    <div className="absolute inset-0 overflow-hidden opacity-20">
-      <div className="relative w-full h-full flex">
-        {Array.from({ length: columns }).map((_, i) => (
-          <div
-            key={i}
-            className="flex-1 flex flex-col items-center overflow-hidden"
-          >
-            {Array.from({ length: 20 }).map((_, j) => (
-              <span
-                key={j}
-                className="font-mono text-success text-xs animate-matrix"
-                style={{
-                  animationDelay: `${Math.random() * 3}s`,
-                  animationDuration: `${1.5 + Math.random()}s`,
-                }}
-              >
-                {matrixChars[Math.floor(Math.random() * matrixChars.length)]}
-              </span>
-            ))}
-          </div>
-        ))}
-      </div>
-    </div>
+    <div
+      className="absolute inset-0 pointer-events-none opacity-[0.15]"
+      style={{
+        backgroundImage: 'radial-gradient(circle, #000 1px, transparent 1px)',
+        backgroundSize: '24px 24px'
+      }}
+    />
   );
 }
 
-function TerminalProcessing({ onComplete }: { onComplete: () => void }) {
-  const [visibleLogs, setVisibleLogs] = useState<typeof processingLogs>([]);
+function TerminalProcessing({ logs }: { logs: string[] }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const timeouts: NodeJS.Timeout[] = [];
-
-    processingLogs.forEach((log, index) => {
-      const timeout = setTimeout(() => {
-        setVisibleLogs(prev => [...prev, log]);
-
-        if (index === processingLogs.length - 1) {
-          setTimeout(onComplete, 800);
-        }
-      }, log.delay);
-      timeouts.push(timeout);
-    });
-
-    return () => timeouts.forEach(clearTimeout);
-  }, [onComplete]);
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [logs]);
 
   return (
-    <div className="relative h-full bg-foreground overflow-hidden">
-      <MatrixBackground />
+    <div className="relative h-full bg-white text-black font-mono text-sm overflow-hidden flex flex-col">
+      <div className="absolute top-0 left-0 right-0 h-1 bg-black/5 z-10">
+        <div className="h-full bg-black/20 w-1/3 animate-scan" />
+      </div>
 
-      {/* Scan Line */}
-      <div className="absolute left-0 right-0 h-0.5 bg-success/50 animate-scan" />
-
-      {/* Terminal Content */}
-      <div className="relative z-10 h-full p-6 overflow-auto">
-        <div className="font-mono text-xs space-y-1">
-          <div className="text-success/60 mb-4">
-            {">"} KHATABOOK AI SCANNER v1.0.3
-          </div>
-          <div className="text-success/60 mb-4">
-            {">"} TIMESTAMP: {new Date().toISOString()}
-          </div>
-          <div className="border-b border-success/30 mb-4" />
-
-          {visibleLogs.map((log, index) => (
-            <div
-              key={index}
-              className={cn(
-                "animate-fade-in",
-                log.isWarning && "text-danger font-bold",
-                log.isComplete && "text-success font-bold mt-4",
-                !log.isWarning && !log.isComplete && "text-success"
-              )}
-            >
-              {log.text}
-              {index === visibleLogs.length - 1 && (
-                <span className="animate-blink">_</span>
-              )}
-            </div>
-          ))}
+      <div className="flex-1 p-8 overflow-auto space-y-2" ref={scrollRef}>
+        <div className="flex items-center gap-2 text-black/40 mb-6 uppercase tracking-widest text-xs border-b border-black/10 pb-2">
+          <span>// SYSTEM_LOGS</span>
+          <span className="ml-auto">LIVE_FEED</span>
         </div>
+
+        {logs.map((log, index) => (
+          <div
+            key={index}
+            className={cn(
+              "animate-fade-in flex items-start",
+              log.includes("ERROR") ? "text-red-600 font-bold" : "text-black"
+            )}
+          >
+            <span className="mr-3 opacity-30 select-none">
+              {String(index + 1).padStart(2, '0')}
+            </span>
+            <span className="mr-2 opacity-50">{">"}</span>
+            <span className="uppercase tracking-tight">{log}</span>
+          </div>
+        ))}
+        <div className="w-2 h-4 bg-black animate-blink mt-2 ml-10" />
       </div>
     </div>
   );
 }
 
-function ResultCard({ onClose }: { onClose: () => void }) {
-  const today = new Date().toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric'
-  });
+function ResultCard({ data, onClose }: { data: ScannedData; onClose: () => void }) {
+  const isSafe = !data.status || data.status === 'Safe';
+
+  const formatCurrency = (val?: number) => {
+    return val ? new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      minimumFractionDigits: 2,
+    }).format(val) : "₹0.00";
+  };
 
   return (
-    <div className="h-full flex flex-col bg-background p-6 overflow-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between pb-4 border-b border-dashed border-foreground/30">
-        <div>
-          <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
-            // SCANNED INVOICE
-          </div>
-          <h2 className="font-mono text-lg font-bold mt-1">SWIGGY TECHNOLOGIES</h2>
-          <div className="font-mono text-xs text-muted-foreground mt-1">
-            GSTIN: 29AABCU9603R1ZM
-          </div>
+    <div className="h-full flex flex-col bg-white text-black p-8 font-mono overflow-auto">
+      {/* Header Info */}
+      <div className="border-b border-dashed border-black/20 pb-6 mb-6">
+        <div className="text-[10px] text-black/40 uppercase tracking-[0.2em] mb-2">
+          // SCANNED INVOICE
         </div>
-        <div className="text-right">
-          <div className="font-mono text-xs text-muted-foreground">{today}</div>
-          <div className="font-mono text-[10px] text-muted-foreground mt-1">INV#SWG-2024-8847</div>
-        </div>
-      </div>
-
-      {/* Alert Box */}
-      <div className="mt-6 bg-danger p-4 border-2 border-danger">
-        <div className="flex items-start gap-3">
-          <AlertTriangle className="h-6 w-6 text-danger-foreground flex-shrink-0 mt-0.5" />
+        <div className="flex justify-between items-start">
           <div>
-            <div className="font-mono text-sm font-bold text-danger-foreground">
-              ⚠️ COMPLIANCE ALERT
-            </div>
-            <div className="font-mono text-xs text-danger-foreground/90 mt-1">
-              Vendor has not filed GSTR-1 for 2 months. Paying this invoice puts your ITC (Input Tax Credit) at risk.
+            <h2 className="text-xl font-bold uppercase tracking-tight">{data.vendor_name || "UNKNOWN VENDOR"}</h2>
+            <div className="text-xs mt-1 uppercase">GSTIN: <span className="font-bold">{data.gstin || "NOT FOUND"}</span></div>
+          </div>
+          <div className="text-right">
+            <div className="text-sm font-bold">{data.invoice_date || "DATE UNKNOWN"}</div>
+            <div className="text-[10px] uppercase mt-1">
+              STATUS: <span className={isSafe ? "text-black" : "text-red-600"}>{data.status || "PENDING"}</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Risk Assessment */}
-      <div className="mt-6 border border-foreground/30 p-4">
-        <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest mb-3">
+      {/* Compliance / Alert Box */}
+      <div className={cn(
+        "border p-4 mb-6 relative overflow-hidden",
+        isSafe ? "border-black" : "border-black"
+      )}>
+        {/* Striped Background for Warning */}
+        {!isSafe && (
+          <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'repeating-linear-gradient(45deg, #000 0, #000 1px, transparent 0, transparent 50%)', backgroundSize: '10px 10px' }} />
+        )}
+
+        <div className="flex items-start gap-4 relative z-10">
+          {isSafe ? (
+            <CheckCircle2 className="h-5 w-5 mt-0.5" />
+          ) : (
+            <ShieldX className="h-5 w-5 mt-0.5" />
+          )}
+
+          <div>
+            <div className="font-bold text-sm uppercase">
+              {isSafe ? "COMPLIANT VENDOR" : "COMPLIANCE RISK DETECTED"}
+            </div>
+            <div className="text-xs mt-1 text-black/70">
+              {isSafe
+                ? "GSTIN verified. Safe to proceed with payment."
+                : "Vendor GSTIN verification failed. ITC Claim may be rejected."
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Risk Grid */}
+      <div className="border border-black/10 p-4 mb-6 bg-black/[0.02]">
+        <div className="text-[10px] text-black/40 uppercase tracking-[0.2em] mb-4">
           // RISK ASSESSMENT
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex items-center gap-2">
-            <ShieldX className="h-4 w-4 text-danger" />
-            <span className="font-mono text-xs">GSTR-1: NOT FILED</span>
+        <div className="grid grid-cols-2 gap-y-3 gap-x-8">
+          <div className="flex items-center justify-between text-xs">
+            <span className="flex items-center gap-2">
+              <div className={cn("w-3 h-3 border border-black rounded-full flex items-center justify-center", !isSafe && "bg-black text-white")}>
+                {!isSafe && <X className="w-2 h-2" />}
+                {isSafe && <CheckCircle2 className="w-2 h-2 opacity-0" />}
+              </div>
+              GSTR-1:
+            </span>
+            <span className="font-bold">{!isSafe ? "NOT FILED" : "FILED"}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <ShieldX className="h-4 w-4 text-danger" />
-            <span className="font-mono text-xs">GSTR-3B: PENDING</span>
+          <div className="flex items-center justify-between text-xs">
+            <span className="flex items-center gap-2">
+              <div className="w-3 h-3 border border-black rounded-full flex items-center justify-center">
+                <div className="w-1 h-1 bg-black rounded-full" />
+              </div>
+              GSTR-3B:
+            </span>
+            <span className="font-bold">PENDING</span>
           </div>
-          <div className="flex items-center gap-2">
-            <Ban className="h-4 w-4 text-danger" />
-            <span className="font-mono text-xs">ITC MATCH: FAILED</span>
+          <div className="flex items-center justify-between text-xs">
+            <span className="flex items-center gap-2">
+              <div className={cn("w-3 h-3 border border-black rounded-full flex items-center justify-center", !isSafe && "bg-black text-white")}>
+                {!isSafe && <Ban className="w-2 h-2" />}
+              </div>
+              ITC MATCH:
+            </span>
+            <span className="font-bold">{!isSafe ? "FAILED" : "LIKELY"}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-danger" />
-            <span className="font-mono text-xs">RISK LEVEL: HIGH</span>
+          <div className="flex items-center justify-between text-xs">
+            <span className="flex items-center gap-2">
+              <AlertTriangle className="w-3 h-3" />
+              RISK LEVEL:
+            </span>
+            <span className="font-bold">{!isSafe ? "HIGH" : "LOW"}</span>
           </div>
         </div>
       </div>
 
       {/* Financials */}
-      <div className="mt-6 border border-foreground/30 p-4">
-        <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest mb-3">
-          // INVOICE BREAKDOWN
+      <div className="border border-black p-4 mb-8">
+        <div className="text-[10px] text-black/40 uppercase tracking-[0.2em] mb-4">
+          // INVOICE DETAILS
         </div>
-        <div className="space-y-2">
-          <div className="flex justify-between font-mono text-sm">
-            <span className="text-muted-foreground">Subtotal</span>
-            <span>₹20,339</span>
+        <div className="flex justify-between items-end border-b border-dashed border-black/20 pb-2 mb-2">
+          <span className="text-xl font-bold uppercase">TOTAL</span>
+          <span className="text-xl font-bold">{formatCurrency(data.total_amount)}</span>
+        </div>
+        {!isSafe && (
+          <div className="flex justify-between items-center text-xs text-red-600 font-bold mt-2">
+            <span>ITC AT RISK</span>
+            <span>{formatCurrency((data.total_amount || 0) * 0.18)}</span>
           </div>
-          <div className="flex justify-between font-mono text-sm">
-            <span className="text-muted-foreground">CGST (9%)</span>
-            <span>₹1,831</span>
-          </div>
-          <div className="flex justify-between font-mono text-sm">
-            <span className="text-muted-foreground">SGST (9%)</span>
-            <span>₹1,830</span>
-          </div>
-          <div className="border-t border-dashed border-foreground/30 pt-2 mt-2">
-            <div className="flex justify-between font-mono text-lg font-bold">
-              <span>TOTAL</span>
-              <span>₹24,000</span>
-            </div>
-          </div>
-          <div className="flex justify-between font-mono text-sm mt-2">
-            <span className="text-danger">ITC AT RISK</span>
-            <span className="text-danger font-bold">₹3,661</span>
-          </div>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div className="mt-auto">
+        <Button
+          className="w-full h-12 border-2 border-black bg-white text-black hover:bg-black hover:text-white transition-colors uppercase font-bold tracking-widest text-xs flex items-center justify-center gap-2 mb-3 rounded-none"
+          onClick={onClose}
+        >
+          {isSafe ? <CheckCircle2 className="w-4 h-4" /> : <Ban className="w-4 h-4" />}
+          {isSafe ? "APPROVE FOR PAYMENT" : "BLOCK PAYMENT"}
+        </Button>
+
+        <div className="text-center">
+          <button
+            onClick={onClose}
+            className="text-[10px] uppercase tracking-widest hover:underline flex items-center justify-center gap-1 mx-auto"
+          >
+            <X className="w-3 h-3" /> CLOSE
+          </button>
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="mt-auto pt-6 space-y-3">
-        <Button
-          className="w-full font-mono text-xs gap-2 h-12"
-          onClick={onClose}
-        >
-          <Ban className="h-4 w-4" />
-          BLOCK PAYMENT & NOTIFY VENDOR
-        </Button>
-        <Button
-          variant="outline"
-          className="w-full font-mono text-xs gap-2 h-10 text-muted-foreground"
-          onClick={onClose}
-        >
-          <CreditCard className="h-4 w-4" />
-          IGNORE & PAY (NOT RECOMMENDED)
-        </Button>
-      </div>
     </div>
   );
 }
@@ -240,25 +224,90 @@ function ResultCard({ onClose }: { onClose: () => void }) {
 export function ScanReceiptModal({ isOpen, onClose }: ScanReceiptModalProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [scanState, setScanState] = useState<ScanState>("upload");
+  const [logs, setLogs] = useState<string[]>([]);
+  const [scannedData, setScannedData] = useState<ScannedData | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleClose = useCallback(() => {
     setScanState("upload");
+    setLogs([]);
+    setScannedData(null);
     onClose();
   }, [onClose]);
 
-  const startScanning = useCallback(() => {
+  const processFile = async (file: File) => {
     setScanState("processing");
-  }, []);
+    setLogs(["INITIALIZING VISION ENGINE...", "UPLOADING IMAGE...", "WAITING FOR CLAUDE AI..."]);
 
-  const handleProcessingComplete = useCallback(() => {
-    setScanState("result");
-  }, []);
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const dataUrl = reader.result as string;
+        const matches = dataUrl.match(/^data:(.+);base64,(.*)$/);
+
+        if (!matches) {
+          setLogs(prev => [...prev, "ERROR: INVALID IMAGE DATA"]);
+          setTimeout(() => setScanState("upload"), 2000);
+          return;
+        }
+
+        const detectedMime = matches[1];
+        const base64String = matches[2];
+
+        setLogs(prev => [...prev, `DETECTED FORMAT: ${detectedMime}`]);
+
+        try {
+          const res = await fetch('/api/scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              image: base64String,
+              mimeType: detectedMime
+            }),
+          });
+
+          setLogs(prev => [...prev, "ANALYZING PIXELS...", "EXTRACTING ENTITIES..."]);
+
+          const data = await res.json();
+
+          if (data.data) {
+            setLogs(prev => [...prev, "DATA EXTRACTED SUCCESSFULLY.", "RENDERING RESULTS..."]);
+            setTimeout(() => {
+              setScannedData(data.data);
+              setScanState("result");
+            }, 800);
+          } else {
+            throw new Error(data.error || "Extraction failed");
+          }
+        } catch (err: any) {
+          setLogs(prev => [...prev, `ERROR: ${err.message}`]);
+          setTimeout(() => setScanState("upload"), 4000);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (e) {
+      console.error(e);
+      setScanState("upload");
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      processFile(e.target.files[0]);
+    }
+  };
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    startScanning();
-  }, [startScanning]);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      processFile(e.dataTransfer.files[0]);
+    }
+  }, []);
+
+  const handleContentClick = () => {
+    fileInputRef.current?.click();
+  };
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -269,40 +318,42 @@ export function ScanReceiptModal({ isOpen, onClose }: ScanReceiptModalProps) {
     setIsDragging(false);
   }, []);
 
-  const handleFileSelect = useCallback(() => {
-    startScanning();
-  }, [startScanning]);
-
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
       setScanState("upload");
+      setLogs([]);
+      setScannedData(null);
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
-      <div className="relative w-full h-full max-w-4xl max-h-[90vh] m-4 bg-background border-2 border-foreground flex flex-col shadow-2xl">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/90 backdrop-blur-sm">
+      <DotGridBackground />
+
+      <div className="relative w-full h-full max-w-3xl max-h-[85vh] m-4 bg-white border-2 border-black flex flex-col shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-foreground flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <ScanLine className="h-5 w-5" />
+        <div className="flex items-center justify-between p-6 border-b-2 border-black flex-shrink-0 bg-white z-10">
+          <div className="flex items-center gap-4">
+            <div className="w-8 h-8 list-none border-2 border-black flex items-center justify-center rounded-sm">
+              <ScanLine className="w-4 h-4" />
+            </div>
             <div>
-              <div className="font-mono text-sm font-medium">SCAN_RECEIPT</div>
-              <div className="font-mono text-[10px] text-muted-foreground">
-                // AI-POWERED INVOICE EXTRACTION
+              <div className="font-mono text-sm font-bold uppercase tracking-wider">SCAN_RECEIPT</div>
+              <div className="font-mono text-[10px] text-black/50 uppercase tracking-widest">
+                // CLAUDE AI VISION ENGINE
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="font-mono text-[10px] text-muted-foreground hidden sm:block">
-              STATE: {scanState.toUpperCase()}
+          <div className="flex items-center gap-6">
+            <div className="font-mono text-[10px] uppercase tracking-widest hidden sm:block">
+              STATS: <span className="font-bold">{scanState}</span>
             </div>
             <button
               onClick={handleClose}
-              className="p-2 border border-foreground hover:bg-foreground hover:text-background transition-colors"
+              className="w-8 h-8 border-2 border-black flex items-center justify-center hover:bg-black hover:text-white transition-colors"
             >
               <X className="h-4 w-4" />
             </button>
@@ -310,62 +361,50 @@ export function ScanReceiptModal({ isOpen, onClose }: ScanReceiptModalProps) {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden relative">
+          <DotGridBackground />
+
           {scanState === "upload" && (
-            <div className="h-full p-6 flex flex-col">
+            <div className="h-full p-8 flex flex-col items-center justify-center relative z-10">
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*"
+                onChange={handleFileChange}
+              />
+
               <div
+                className={cn(
+                  "w-full h-64 border-2 border-dashed border-black/30 flex flex-col items-center justify-center cursor-pointer hover:bg-black/5 transition-all",
+                  isDragging && "border-black bg-black/5"
+                )}
+                onClick={() => fileInputRef.current?.click()}
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
-                className={cn(
-                  "flex-1 border-2 border-dashed transition-colors flex flex-col items-center justify-center gap-6 cursor-pointer",
-                  isDragging
-                    ? "border-success bg-success/5"
-                    : "border-foreground/50 hover:border-foreground"
-                )}
-                onClick={handleFileSelect}
               >
-                <Upload className={cn(
-                  "h-16 w-16 transition-colors",
-                  isDragging ? "text-success" : "text-muted-foreground"
-                )} />
-                <div className="text-center">
-                  <div className="font-mono text-lg font-bold">
-                    DROP RECEIPT OR CLICK TO CAPTURE
-                  </div>
-                  <div className="mt-2 font-mono text-xs text-muted-foreground">
-                    // SUPPORTS: JPG, PNG, PDF UP TO 10MB
-                  </div>
-                </div>
-
-                {/* Camera Button for Mobile */}
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="font-mono text-xs gap-2 mt-4"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleFileSelect();
-                  }}
-                >
-                  <Camera className="h-5 w-5" />
-                  CAPTURE FROM CAMERA
-                </Button>
+                <Upload className="w-8 h-8 mb-4 opacity-50" />
+                <div className="font-mono text-sm font-bold uppercase tracking-widest">Drop Invoice Here</div>
+                <div className="font-mono text-xs text-black/40 mt-2 uppercase">or click to browse</div>
               </div>
 
-              {/* Footer */}
-              <div className="mt-4 font-mono text-[10px] text-muted-foreground text-center">
-                // POWERED BY KHATABOOK AI // GST COMPLIANCE ENGINE v1.0.3
-              </div>
+              <Button
+                className="mt-8 h-12 border-2 border-black bg-transparent text-black hover:bg-black hover:text-white transition-colors uppercase font-bold tracking-widest text-xs rounded-none px-8"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Camera className="h-4 w-4 mr-2" />
+                Start Capture
+              </Button>
             </div>
           )}
 
           {scanState === "processing" && (
-            <TerminalProcessing onComplete={handleProcessingComplete} />
+            <TerminalProcessing logs={logs} />
           )}
 
-          {scanState === "result" && (
-            <ResultCard onClose={handleClose} />
+          {scanState === "result" && scannedData && (
+            <ResultCard data={scannedData} onClose={handleClose} />
           )}
         </div>
       </div>
