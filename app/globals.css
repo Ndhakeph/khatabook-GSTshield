@@ -1,26 +1,234 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+@import "@fontsource/jetbrains-mono/700.css";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* Neo-Brutalist Design System - KhataBook AI */
 
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* Core Monochrome Palette */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+
+    --primary: 0 0% 0%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 0%;
+
+    --muted: 0 0% 90%;
+    --muted-foreground: 0 0% 40%;
+
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 0%;
+
+    /* Signal Colors - ONLY for alerts */
+    --danger: 0 100% 50%;
+    --danger-foreground: 0 0% 100%;
+
+    --success: 136 100% 50%;
+    --success-foreground: 0 0% 0%;
+
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 0%;
+    --input: 0 0% 0%;
+    --ring: 0 0% 0%;
+
+    --radius: 0px;
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 0%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 25%;
+    --sidebar-ring: 0 0% 100%;
+
+    /* Typography */
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-sans: 'Inter', sans-serif;
+  }
+
+  .dark {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+
+    --card: 0 0% 5%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 0 0% 5%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 0%;
+
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 0 0% 20%;
+    --muted-foreground: 0 0% 60%;
+
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 100%;
+
+    --border: 0 0% 100%;
+    --input: 0 0% 100%;
+    --ring: 0 0% 100%;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: var(--font-sans);
+    /* Dot Grid Background Pattern */
+    background-image: radial-gradient(circle, hsl(0 0% 80%) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  /* Monospace for data */
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+}
+
+@layer utilities {
+
+  /* Dotted borders */
+  .border-dotted-heavy {
+    border-style: dotted;
+    border-width: 2px;
+  }
+
+  /* Dashed borders for cards */
+  .border-dashed-heavy {
+    border-style: dashed;
+    border-width: 1px;
+  }
+
+  /* Striped background for failed rows */
+  .bg-striped {
+    background: repeating-linear-gradient(-45deg,
+        hsl(0 0% 100%),
+        hsl(0 0% 100%) 4px,
+        hsl(0 0% 92%) 4px,
+        hsl(0 0% 92%) 8px) !important;
+  }
+
+  /* Blinking animation */
+  @keyframes blink {
+
+    0%,
+    50% {
+      opacity: 1;
+    }
+
+    51%,
+    100% {
+      opacity: 0;
+    }
+  }
+
+  .animate-blink {
+    animation: blink 1s infinite;
+  }
+
+  /* Matrix rain effect */
+  @keyframes matrix-fall {
+    0% {
+      transform: translateY(-100%);
+      opacity: 0;
+    }
+
+    10% {
+      opacity: 1;
+    }
+
+    90% {
+      opacity: 1;
+    }
+
+    100% {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+  }
+
+  .animate-matrix {
+    animation: matrix-fall 2s linear infinite;
+  }
+
+  /* Scan line effect */
+  @keyframes scan-line {
+    0% {
+      top: 0;
+    }
+
+    100% {
+      top: 100%;
+    }
+  }
+
+  .animate-scan {
+    animation: scan-line 2s linear infinite;
+  }
+
+  /* Terminal cursor blink */
+  @keyframes cursor-blink {
+
+    0%,
+    50% {
+      opacity: 1;
+    }
+
+    51%,
+    100% {
+      opacity: 0;
+    }
+  }
+
+  .animate-cursor {
+    animation: cursor-blink 0.8s infinite;
+  }
+
+  /* Ping animation for alerts */
+  @keyframes ping-slow {
+
+    75%,
+    100% {
+      transform: scale(2);
+      opacity: 0;
+    }
+  }
+
+  .animate-ping-slow {
+    animation: ping-slow 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+
+  /* Button hover states - invert on hover */
+  .btn-invert {
+    @apply transition-colors hover:bg-foreground hover:text-background;
+  }
 }
