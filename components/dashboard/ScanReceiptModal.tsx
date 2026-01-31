@@ -30,7 +30,7 @@ const matrixChars = "アイウエオカキクケコサシスセソタチツテ�
 
 function MatrixBackground() {
   const columns = 30;
-  
+
   return (
     <div className="absolute inset-0 overflow-hidden opacity-20">
       <div className="relative w-full h-full flex">
@@ -63,11 +63,11 @@ function TerminalProcessing({ onComplete }: { onComplete: () => void }) {
 
   useEffect(() => {
     const timeouts: NodeJS.Timeout[] = [];
-    
+
     processingLogs.forEach((log, index) => {
       const timeout = setTimeout(() => {
         setVisibleLogs(prev => [...prev, log]);
-        
+
         if (index === processingLogs.length - 1) {
           setTimeout(onComplete, 800);
         }
@@ -81,10 +81,10 @@ function TerminalProcessing({ onComplete }: { onComplete: () => void }) {
   return (
     <div className="relative h-full bg-foreground overflow-hidden">
       <MatrixBackground />
-      
+
       {/* Scan Line */}
       <div className="absolute left-0 right-0 h-0.5 bg-success/50 animate-scan" />
-      
+
       {/* Terminal Content */}
       <div className="relative z-10 h-full p-6 overflow-auto">
         <div className="font-mono text-xs space-y-1">
@@ -95,7 +95,7 @@ function TerminalProcessing({ onComplete }: { onComplete: () => void }) {
             {">"} TIMESTAMP: {new Date().toISOString()}
           </div>
           <div className="border-b border-success/30 mb-4" />
-          
+
           {visibleLogs.map((log, index) => (
             <div
               key={index}
@@ -119,10 +119,10 @@ function TerminalProcessing({ onComplete }: { onComplete: () => void }) {
 }
 
 function ResultCard({ onClose }: { onClose: () => void }) {
-  const today = new Date().toLocaleDateString('en-IN', { 
-    day: '2-digit', 
-    month: 'short', 
-    year: 'numeric' 
+  const today = new Date().toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
   });
 
   return (
@@ -217,15 +217,15 @@ function ResultCard({ onClose }: { onClose: () => void }) {
 
       {/* Action Buttons */}
       <div className="mt-auto pt-6 space-y-3">
-        <Button 
+        <Button
           className="w-full font-mono text-xs gap-2 h-12"
           onClick={onClose}
         >
           <Ban className="h-4 w-4" />
           BLOCK PAYMENT & NOTIFY VENDOR
         </Button>
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           className="w-full font-mono text-xs gap-2 h-10 text-muted-foreground"
           onClick={onClose}
         >
@@ -283,8 +283,8 @@ export function ScanReceiptModal({ isOpen, onClose }: ScanReceiptModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/90">
-      <div className="relative w-full h-full max-w-4xl max-h-[90vh] m-4 bg-background border-2 border-foreground flex flex-col">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+      <div className="relative w-full h-full max-w-4xl max-h-[90vh] m-4 bg-background border-2 border-foreground flex flex-col shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-foreground flex-shrink-0">
           <div className="flex items-center gap-3">
@@ -337,7 +337,7 @@ export function ScanReceiptModal({ isOpen, onClose }: ScanReceiptModalProps) {
                     // SUPPORTS: JPG, PNG, PDF UP TO 10MB
                   </div>
                 </div>
-                
+
                 {/* Camera Button for Mobile */}
                 <Button
                   variant="outline"
@@ -352,7 +352,7 @@ export function ScanReceiptModal({ isOpen, onClose }: ScanReceiptModalProps) {
                   CAPTURE FROM CAMERA
                 </Button>
               </div>
-              
+
               {/* Footer */}
               <div className="mt-4 font-mono text-[10px] text-muted-foreground text-center">
                 // POWERED BY KHATABOOK AI // GST COMPLIANCE ENGINE v1.0.3

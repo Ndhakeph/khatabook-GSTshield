@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
-import { 
-  LayoutDashboard, 
-  ShieldCheck, 
-  ScanLine, 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  ShieldCheck,
+  ScanLine,
   Terminal,
   Menu,
   X
@@ -30,7 +31,7 @@ interface SidebarProps {
 
 export function Sidebar({ onScanClick }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const location = useLocation();
+  const pathname = usePathname();
 
   const handleItemClick = (item: MenuItem) => {
     setIsOpen(false);
@@ -77,8 +78,8 @@ export function Sidebar({ onScanClick }: SidebarProps) {
             </div>
             <ul className="space-y-1">
               {menuItems.map((item) => {
-                const isActive = item.url ? location.pathname === item.url : false;
-                
+                const isActive = item.url ? pathname === item.url : false;
+
                 // Render as button for action items
                 if (item.action) {
                   return (
@@ -96,12 +97,12 @@ export function Sidebar({ onScanClick }: SidebarProps) {
                     </li>
                   );
                 }
-                
+
                 // Render as NavLink for regular items
                 return (
                   <li key={item.title}>
-                    <NavLink
-                      to={item.url!}
+                    <Link
+                      href={item.url!}
                       onClick={() => handleItemClick(item)}
                       className={cn(
                         "flex items-center gap-3 px-3 py-2.5 font-mono text-sm transition-colors border",
@@ -115,7 +116,7 @@ export function Sidebar({ onScanClick }: SidebarProps) {
                       {isActive && (
                         <span className="ml-auto text-[10px]">{"<-"}</span>
                       )}
-                    </NavLink>
+                    </Link>
                   </li>
                 );
               })}

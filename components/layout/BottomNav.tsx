@@ -1,5 +1,6 @@
 import { Home, ShieldCheck, Terminal, ScanLine } from "lucide-react";
-import { NavLink, useLocation } from "react-router-dom";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 interface BottomNavProps {
@@ -12,38 +13,38 @@ const navItems = [
 ];
 
 export function BottomNav({ onScanClick }: BottomNavProps) {
-  const location = useLocation();
+  const pathname = usePathname();
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 bg-background border-t-2 border-foreground lg:hidden">
       <div className="flex items-center justify-around h-16 px-4">
         {/* Home */}
-        <NavLink
-          to="/"
+        <Link
+          href="/"
           className={cn(
             "flex flex-col items-center justify-center gap-1 p-2 transition-colors",
-            location.pathname === "/" 
-              ? "text-foreground" 
+            pathname === "/"
+              ? "text-foreground"
               : "text-muted-foreground"
           )}
         >
           <Home className="h-5 w-5" />
           <span className="font-mono text-[10px]">HOME</span>
-        </NavLink>
+        </Link>
 
         {/* Shield */}
-        <NavLink
-          to="/compliance"
+        <Link
+          href="/compliance"
           className={cn(
             "flex flex-col items-center justify-center gap-1 p-2 transition-colors",
-            location.pathname === "/compliance" 
-              ? "text-foreground" 
+            pathname === "/compliance"
+              ? "text-foreground"
               : "text-muted-foreground"
           )}
         >
           <ShieldCheck className="h-5 w-5" />
           <span className="font-mono text-[10px]">SHIELD</span>
-        </NavLink>
+        </Link>
 
         {/* Scan - Floating Action Button */}
         <button
@@ -56,18 +57,18 @@ export function BottomNav({ onScanClick }: BottomNavProps) {
         </button>
 
         {/* Chat */}
-        <NavLink
-          to="/chat"
+        <Link
+          href="/chat"
           className={cn(
             "flex flex-col items-center justify-center gap-1 p-2 transition-colors",
-            location.pathname === "/chat" 
-              ? "text-foreground" 
+            pathname === "/chat"
+              ? "text-foreground"
               : "text-muted-foreground"
           )}
         >
           <Terminal className="h-5 w-5" />
           <span className="font-mono text-[10px]">CHAT</span>
-        </NavLink>
+        </Link>
 
         {/* Placeholder for balance */}
         <div className="w-12" />

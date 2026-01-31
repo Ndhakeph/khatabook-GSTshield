@@ -1,14 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-@import "@fontsource/jetbrains-mono/400.css";
-@import "@fontsource/jetbrains-mono/500.css";
-@import "@fontsource/jetbrains-mono/700.css";
-@import "@fontsource/inter/400.css";
-@import "@fontsource/inter/500.css";
-@import "@fontsource/inter/600.css";
-@import "@fontsource/inter/700.css";
+
 
 /* Neo-Brutalist Design System - KhataBook AI */
 
@@ -39,6 +31,9 @@
     /* Signal Colors - ONLY for alerts */
     --danger: 0 100% 50%;
     --danger-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 0%;
 
     --success: 136 100% 50%;
     --success-foreground: 0 0% 0%;
@@ -97,11 +92,13 @@
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: hsl(var(--border));
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    @apply font-sans antialiased;
     font-family: var(--font-sans);
     /* Dot Grid Background Pattern */
     background-image: radial-gradient(circle, hsl(0 0% 80%) 1px, transparent 1px);
@@ -229,6 +226,13 @@
 
   /* Button hover states - invert on hover */
   .btn-invert {
-    @apply transition-colors hover:bg-foreground hover:text-background;
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+
+    &:hover {
+      background-color: hsl(var(--foreground));
+      color: hsl(var(--background));
+    }
   }
 }
