@@ -154,51 +154,48 @@ export function ComplianceTable() {
         <TableBody>
           {invoices.map((invoice) => {
             const isFailed = invoice.status === "Failed";
+            const isPending = invoice.status === "Pending";
 
             return (
               <TableRow
                 key={invoice.id}
                 className={cn(
-                  "border-b border-foreground/20 hover:bg-transparent",
-                  isFailed && "relative"
+                  "border-b border-black/5 transition-colors cursor-default",
+                  !isFailed && !isPending && "hover:bg-zinc-50",
+                  isFailed && "bg-red-50 hover:bg-red-50"
                 )}
               >
-                {/* Failed row indicator - left stripe */}
-                {isFailed && (
-                  <td
-                    className="absolute left-0 top-0 bottom-0 w-1 bg-danger"
-                    style={{ padding: 0 }}
-                  />
-                )}
                 <TableCell className={cn(
-                  "font-mono text-xs py-2 border-r border-foreground/10",
-                  isFailed && "pl-4 bg-danger/5"
-                )}>{invoice.date}</TableCell>
+                  "font-mono text-xs py-4 pl-6 border-r border-black/5 relative overflow-hidden",
+                  // Red Stripe for Failed
+                  isFailed && "text-red-900"
+                )}>
+                  {isFailed && <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500" />}
+                  {invoice.date}
+                </TableCell>
                 <TableCell className={cn(
-                  "font-sans text-xs py-2 border-r border-foreground/10",
-                  isFailed && "bg-danger/5"
+                  "font-sans text-xs font-medium py-4 border-r border-black/5",
+                  isFailed ? "text-red-900" : "text-zinc-700"
                 )}>{invoice.vendor}</TableCell>
                 <TableCell className={cn(
-                  "font-mono text-[10px] text-muted-foreground py-2 border-r border-foreground/10 hidden md:table-cell",
-                  isFailed && "bg-danger/5"
+                  "font-mono text-[10px] text-zinc-400 py-4 border-r border-black/5 hidden md:table-cell",
+                  isFailed && "text-red-800/60"
                 )}>
                   {invoice.gstin}
                 </TableCell>
                 <TableCell className={cn(
-                  "py-2 border-r border-foreground/10",
-                  isFailed && "bg-danger/5"
+                  "py-4 border-r border-black/5"
                 )}>
                   <StatusBadge status={invoice.status} />
                 </TableCell>
                 <TableCell className={cn(
-                  "font-mono text-xs py-2 text-right border-r border-foreground/10",
-                  isFailed && "bg-danger/5"
+                  "font-mono text-xs py-4 text-right border-r border-black/5 font-bold",
+                  isFailed ? "text-red-900" : "text-black"
                 )}>
                   {formatAmount(invoice.amount)}
                 </TableCell>
                 <TableCell className={cn(
-                  "text-right py-2",
-                  isFailed && "bg-danger/5"
+                  "text-right py-4 pr-6"
                 )}>
                   <ActionButton status={invoice.status} />
                 </TableCell>
@@ -212,24 +209,28 @@ export function ComplianceTable() {
 }
 
 function StatusBadge({ status }: { status: Invoice["status"] }) {
+  if (status === "Failed") {
+    return (
+      <span className="inline-flex items-center px-3 py-1 bg-white border border-red-200 text-red-600 font-bold font-mono text-[10px] uppercase shadow-sm">
+        <span className="w-2 h-2 bg-red-500 mr-2" />
+        FAILED
+      </span>
+    )
+  }
+
+  if (status === "Safe") {
+    return (
+      <span className="inline-flex items-center px-3 py-1 bg-white border border-green-200 text-green-600 font-bold font-mono text-[10px] uppercase shadow-sm">
+        <span className="w-2 h-2 bg-green-500 mr-2" />
+        SAFE
+      </span>
+    )
+  }
+
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 px-2 py-1 font-mono text-[10px] uppercase border",
-        status === "Safe" && "border-success text-success",
-        status === "Failed" && "border-danger text-danger",
-        status === "Pending" && "border-foreground/50 text-muted-foreground"
-      )}
-    >
-      <span
-        className={cn(
-          "w-1.5 h-1.5",
-          status === "Safe" && "bg-success",
-          status === "Failed" && "bg-danger animate-blink",
-          status === "Pending" && "bg-foreground/50"
-        )}
-      />
-      {status}
+    <span className="inline-flex items-center px-3 py-1 bg-white border border-zinc-200 text-zinc-500 font-mono text-[10px] uppercase shadow-sm">
+      <span className="w-2 h-2 bg-zinc-300 mr-2" />
+      PENDING
     </span>
   );
 }
@@ -240,9 +241,9 @@ function ActionButton({ status }: { status: Invoice["status"] }) {
       <Button
         variant="default"
         size="sm"
-        className="font-mono text-[10px] uppercase h-7 px-3"
+        className="font-mono text-[10px] uppercase h-8 px-4 bg-black text-white hover:bg-zinc-800 rounded-none shadow-sm"
       >
-        Block Payment
+        BLOCK PAYMENT
       </Button>
     );
   }
@@ -252,9 +253,9 @@ function ActionButton({ status }: { status: Invoice["status"] }) {
       <Button
         variant="outline"
         size="sm"
-        className="font-mono text-[10px] uppercase h-7 px-3"
+        className="font-mono text-[10px] uppercase h-8 px-4 bg-white border-2 border-black text-black hover:bg-zinc-50 rounded-none font-bold"
       >
-        Pay Now
+        PAY NOW
       </Button>
     );
   }
@@ -263,10 +264,10 @@ function ActionButton({ status }: { status: Invoice["status"] }) {
     <Button
       variant="outline"
       size="sm"
-      className="font-mono text-[10px] uppercase h-7 px-3 opacity-50"
+      className="font-mono text-[10px] uppercase h-8 px-4 border-zinc-200 text-zinc-400 rounded-none"
       disabled
     >
-      Verify
+      VERIFY
     </Button>
   );
 }

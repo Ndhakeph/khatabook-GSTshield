@@ -68,20 +68,20 @@ export default function ChatPage() {
                 </p>
             </div>
 
-            <div className="flex flex-col h-[600px] border border-border bg-card relative overflow-hidden">
-                <div className="absolute inset-0 opacity-5 pointer-events-none bg-[radial-gradient(circle,_var(--foreground)_1px,_transparent_1px)] [background-size:20px_20px]"></div>
+            <div className="flex flex-col h-[600px] border-2 border-black bg-black relative overflow-hidden shadow-lg">
+                <div className="absolute inset-0 opacity-20 pointer-events-none bg-[radial-gradient(circle,_#333_1px,_transparent_1px)] [background-size:20px_20px]"></div>
 
-                <div className="flex items-center justify-between p-3 border-b border-border bg-muted/20">
-                    <div className="flex items-center gap-2 font-mono text-xs">
+                <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-900/50">
+                    <div className="flex items-center gap-2 font-mono text-xs text-zinc-400">
                         <Terminal className="h-4 w-4" />
                         <span>CFO_AI_CORE_V2.1</span>
-                        <span className="text-success animate-pulse">●</span>
+                        <span className="text-green-500 animate-pulse">●</span>
                     </div>
                 </div>
 
                 <div className="flex-1 p-6 overflow-y-auto font-mono text-sm space-y-4">
                     {messages.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
+                        <div className="h-full flex flex-col items-center justify-center text-zinc-600">
                             <Terminal className="h-12 w-12 mb-4 opacity-20" />
                             <div className="font-mono text-sm">
                                 INITIALIZING SECURE CONNECTION...
@@ -91,7 +91,7 @@ export default function ChatPage() {
                         messages.map((msg, i) => (
                             <div key={i} className={cn(
                                 "leading-relaxed break-words max-w-3xl",
-                                msg.role === "user" ? "text-foreground font-bold" : "text-muted-foreground"
+                                msg.role === "user" ? "text-white font-bold" : "text-zinc-500"
                             )}>
                                 <span className="opacity-50 mr-2">{msg.role === "user" ? "> " : "# "}</span>
                                 {msg.text}
@@ -106,7 +106,7 @@ export default function ChatPage() {
                     )}
                 </div>
 
-                <div className="p-4 border-t border-border bg-muted/10">
+                <div className="p-4 border-t border-zinc-800 bg-zinc-900/30">
                     <div className="flex items-center gap-3">
                         <span className="font-mono text-success text-lg">{">"}</span>
                         <input
@@ -116,7 +116,7 @@ export default function ChatPage() {
                             onKeyDown={(e) => e.key === "Enter" && handleSend()}
                             autoFocus
                             placeholder="ENTER COMMAND OR QUERY..."
-                            className="flex-1 bg-transparent font-mono text-sm outline-none placeholder:text-muted-foreground/50"
+                            className="flex-1 bg-transparent font-mono text-sm outline-none placeholder:text-zinc-600 text-white"
                         />
                     </div>
                 </div>

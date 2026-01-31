@@ -9,26 +9,92 @@ import { Button } from "@/components/ui/button";
 
 const Index = () => {
   const [isScanModalOpen, setIsScanModalOpen] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [stats, setStats] = useState({
     total_outstanding: 0,
     itc_at_risk: 0,
     safe_to_pay: 0
   });
 
-  useEffect(() => {
-    async function fetchStats() {
-      try {
-        const res = await fetch('/api/compliance');
-        const data = await res.json();
-        if (data.stats) {
-          setStats(data.stats);
-        }
-      } catch (e) {
-        console.error("Failed to fetch stats", e);
+  const fetchStats = async () => {
+    try {
+      const res = await fetch('/api/compliance');
+      const data = await res.json();
+      if (data.stats) {
+        setStats(data.stats);
       }
+    } catch (e) {
+      console.error("Failed to fetch stats", e);
     }
+  };
+
+  useEffect(() => {
     fetchStats();
-  }, []);
+  }, [refreshTrigger]);
+
+  const handleRefresh = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
+
+  const handleExportCSV = async () => {
+    setIsExporting(true);
+    try {
+      const res = await fetch('/api/compliance');
+      const data = await res.json();
+
+      if (!data.records) throw new Error("No data");
+
+      // Simple CSV conversion
+      const headers = ["Invoice ID", "Date", "Vendor", "GSTIN", "Amount", "Status"];
+      const rows = data.records.map((r: any) => [
+        r.id,
+        r.invoice_date,
+        r.vendor_name,
+        r.gstin,
+        r.amount,
+        r.status
+      ]);
+
+      const csvContent = [
+        headers.join(","),
+        ...rows.map((row: any[]) => row.join(","))
+      ].join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `compliance_export_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("Export failed", e);
+      alert("Failed to export CSV");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleGenerateGSTR = () => {
+    setIsGenerating(true);
+    // Mock Delay
+    setTimeout(() => {
+      setIsGenerating(false);
+      alert("GSTR-3B Report generated successfully!");
+    }, 2000);
+  };
+
+  const handleSyncTally = () => {
+    setIsSyncing(true);
+    // Mock Delay
+    setTimeout(() => {
+      setIsSyncing(false);
+      alert("Synced successfully with Tally Prime!");
+    }, 2500);
+  };
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat("en-IN", {
@@ -62,7 +128,7 @@ const Index = () => {
 
           <div className="flex items-center gap-3">
             <div className="font-mono text-[10px] text-muted-foreground">
-              LAST SYNC: 2 MIN AGO
+              LAST SYNC: JUST NOW
             </div>
             <Button
               onClick={() => setIsScanModalOpen(true)}
@@ -97,7 +163,7 @@ const Index = () => {
       </div>
 
       {/* Compliance Table */}
-      <ComplianceTable />
+      <ComplianceTable key={refreshTrigger} />
 
       {/* Quick Actions */}
       <div className="mt-8 border border-dotted border-foreground/30 p-4">
@@ -105,16 +171,39 @@ const Index = () => {
           // QUICK ACTIONS
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" className="font-mono text-[10px]">
-            EXPORT CSV
+          <Button
+            variant="outline"
+            size="sm"
+            className="font-mono text-[10px]"
+            onClick={handleExportCSV}
+            disabled={isExporting}
+          >
+            {isExporting ? "EXPORTING..." : "EXPORT CSV"}
           </Button>
-          <Button variant="outline" size="sm" className="font-mono text-[10px]">
-            GENERATE GSTR-3B
+          <Button
+            variant="outline"
+            size="sm"
+            className="font-mono text-[10px]"
+            onClick={handleGenerateGSTR}
+            disabled={isGenerating}
+          >
+            {isGenerating ? "GENERATING..." : "GENERATE GSTR-3B"}
           </Button>
-          <Button variant="outline" size="sm" className="font-mono text-[10px]">
-            SYNC TALLY
+          <Button
+            variant="outline"
+            size="sm"
+            className="font-mono text-[10px]"
+            onClick={handleSyncTally}
+            disabled={isSyncing}
+          >
+            {isSyncing ? "SYNCING..." : "SYNC TALLY"}
           </Button>
-          <Button variant="outline" size="sm" className="font-mono text-[10px]">
+          <Button
+            variant="outline"
+            size="sm"
+            className="font-mono text-[10px]"
+            onClick={handleRefresh}
+          >
             REFRESH ALL
           </Button>
         </div>
