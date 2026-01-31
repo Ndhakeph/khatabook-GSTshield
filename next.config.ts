@@ -24,6 +24,7 @@ const nextConfig: NextConfig = {
     // This ignores linting errors (like <img> vs <Image>) during the build
     ignoreDuringBuilds: true,
   },
+  serverExternalPackages: ['pdfkit'],
 };
 
 export default nextConfig;
