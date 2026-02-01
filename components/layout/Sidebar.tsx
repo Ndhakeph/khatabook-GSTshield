@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
-import { 
-  LayoutDashboard, 
-  ShieldCheck, 
-  ScanLine, 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  ShieldCheck,
+  ScanLine,
   Terminal,
   Menu,
   X
@@ -30,7 +31,7 @@ interface SidebarProps {
 
 export function Sidebar({ onScanClick }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const location = useLocation();
+  const pathname = usePathname();
 
   const handleItemClick = (item: MenuItem) => {
     setIsOpen(false);
@@ -52,33 +53,33 @@ export function Sidebar({ onScanClick }: SidebarProps) {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 w-64 bg-sidebar border-r border-sidebar-border transform transition-transform lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 w-64 bg-black border-r border-zinc-800 transform transition-transform lg:translate-x-0",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="p-6 border-b border-sidebar-border">
-            <div className="flex items-center gap-1 font-mono text-lg font-bold text-sidebar-foreground">
+          <div className="p-6 border-b border-zinc-800">
+            <div className="flex items-center gap-1 font-mono text-lg font-bold text-white">
               <span>KHATABOOK</span>
-              <span className="px-1.5 py-0.5 bg-danger text-danger-foreground text-xs">
+              <span className="px-1.5 py-0.5 bg-red-600 text-white text-xs">
                 AI
               </span>
             </div>
-            <div className="mt-2 text-xs text-sidebar-foreground/60 font-mono">
+            <div className="mt-2 text-xs text-zinc-500 font-mono">
               v1.0.3 // BETA
             </div>
           </div>
 
           {/* Navigation */}
           <nav className="flex-1 p-4">
-            <div className="text-[10px] font-mono text-sidebar-foreground/40 uppercase tracking-widest mb-4">
+            <div className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest mb-4">
               // NAVIGATION
             </div>
             <ul className="space-y-1">
               {menuItems.map((item) => {
-                const isActive = item.url ? location.pathname === item.url : false;
-                
+                const isActive = item.url ? pathname === item.url : false;
+
                 // Render as button for action items
                 if (item.action) {
                   return (
@@ -87,7 +88,7 @@ export function Sidebar({ onScanClick }: SidebarProps) {
                         onClick={() => handleItemClick(item)}
                         className={cn(
                           "w-full flex items-center gap-3 px-3 py-2.5 font-mono text-sm transition-colors border",
-                          "text-sidebar-foreground/80 border-transparent hover:border-sidebar-foreground/30 hover:bg-sidebar-accent"
+                          "text-zinc-400 border-transparent hover:text-white hover:bg-zinc-900"
                         )}
                       >
                         <item.icon className="h-4 w-4" />
@@ -96,18 +97,18 @@ export function Sidebar({ onScanClick }: SidebarProps) {
                     </li>
                   );
                 }
-                
+
                 // Render as NavLink for regular items
                 return (
                   <li key={item.title}>
-                    <NavLink
-                      to={item.url!}
+                    <Link
+                      href={item.url!}
                       onClick={() => handleItemClick(item)}
                       className={cn(
                         "flex items-center gap-3 px-3 py-2.5 font-mono text-sm transition-colors border",
                         isActive
-                          ? "bg-sidebar-foreground text-sidebar border-sidebar-foreground"
-                          : "text-sidebar-foreground/80 border-transparent hover:border-sidebar-foreground/30 hover:bg-sidebar-accent"
+                          ? "bg-white text-black border-white font-bold"
+                          : "text-zinc-400 border-transparent hover:text-white hover:bg-zinc-900"
                       )}
                     >
                       <item.icon className="h-4 w-4" />
@@ -115,7 +116,7 @@ export function Sidebar({ onScanClick }: SidebarProps) {
                       {isActive && (
                         <span className="ml-auto text-[10px]">{"<-"}</span>
                       )}
-                    </NavLink>
+                    </Link>
                   </li>
                 );
               })}
@@ -123,26 +124,26 @@ export function Sidebar({ onScanClick }: SidebarProps) {
           </nav>
 
           {/* Footer - System Status */}
-          <div className="p-4 border-t border-sidebar-border">
-            <div className="text-[10px] font-mono text-sidebar-foreground/40 leading-relaxed space-y-1">
+          <div className="p-4 border-t border-zinc-800 bg-black">
+            <div className="text-[10px] font-mono text-zinc-600 leading-relaxed space-y-1">
               <div className="flex items-center justify-between">
                 <span>SERVER:</span>
-                <span className="text-sidebar-foreground/60">IND-PUNE-01</span>
+                <span className="text-zinc-400">IND-PUNE-01</span>
               </div>
               <div className="flex items-center justify-between">
                 <span>LATENCY:</span>
-                <span className="text-success">24ms</span>
+                <span className="text-green-500">24ms</span>
               </div>
               <div className="flex items-center justify-between">
                 <span>GSTN API:</span>
                 <span className="flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 bg-success animate-pulse" />
-                  <span className="text-success">CONNECTED</span>
+                  <span className="w-1.5 h-1.5 bg-green-500 animate-pulse" />
+                  <span className="text-green-500">CONNECTED</span>
                 </span>
               </div>
-              <div className="flex items-center justify-between border-t border-sidebar-border/50 pt-2 mt-2">
+              <div className="flex items-center justify-between border-t border-zinc-800 pt-2 mt-2">
                 <span>BUILD:</span>
-                <span className="text-sidebar-foreground/60">v1.0.4-rc</span>
+                <span className="text-zinc-500">v1.0.4-rc</span>
               </div>
             </div>
           </div>
