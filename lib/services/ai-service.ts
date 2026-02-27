@@ -9,8 +9,6 @@ const fastRouter = new OpenAI({
 
 import { complianceService } from './compliance-service';
 
-// ... (existing imports/setup)
-
 export class AIService {
     async generateChatResponse(message: string): Promise<ServiceResponse<string>> {
         try {
