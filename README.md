@@ -2,7 +2,10 @@
 
 A proactive GST compliance checker that validates vendor tax status before payment, built for Indian freelancers and small businesses.
 
-**[Live Demo](https://khatabook-ai-hackathon-7j33.vercel.app/)**
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Visit_Site-blue?style=for-the-badge)](https://khatabook-ai-hackathon-7j33.vercel.app/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+
+![GST Shield Dashboard](public/demo-screenshot.png)
 
 ## Why I Built This
 
@@ -46,7 +49,7 @@ Existing accounting software only tracks expenses *after* payment. By then, the 
 
 There's also a chat interface where you can ask natural language questions about your expenses ("Which vendor has the highest pending ITC?").
 
-## Key Technical Decisions
+## 🔧 Key Technical Decisions
 
 - **Claude's vision API for OCR instead of dedicated OCR libraries**: Traditional OCR solutions like Tesseract struggle with real-world Indian receipts—crumpled paper, mixed Hindi-English text, handwritten notes, and inconsistent formats. Claude's vision model handles these edge cases natively without preprocessing pipelines or language-specific training.
 
@@ -54,7 +57,7 @@ There's also a chat interface where you can ask natural language questions about
 
 - **RLS architecture with split clients**: I configured Supabase with anon-only SELECT policies so the public client can read data for the dashboard, but all writes (INSERT/UPDATE/DELETE) go through a service role client on the server side. This prevents unauthorized data modification while keeping the read path simple.
 
-## Tech Stack
+## 🛠️ Tech Stack
 
 - **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS, shadcn/ui
 - **Backend**: Next.js API Routes (serverless on Vercel)
@@ -62,7 +65,7 @@ There's also a chat interface where you can ask natural language questions about
 - **AI**: Claude 3.5 Sonnet via FastRouter for receipt OCR and chat
 - **Deployment**: Vercel
 
-## Getting Started
+## 🚀 Getting Started
 
 ### Prerequisites
 
