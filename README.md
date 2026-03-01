@@ -46,6 +46,14 @@ Existing accounting software only tracks expenses *after* payment. By then, the 
 
 There's also a chat interface where you can ask natural language questions about your expenses ("Which vendor has the highest pending ITC?").
 
+## Key Technical Decisions
+
+- **Claude's vision API for OCR instead of dedicated OCR libraries**: Traditional OCR solutions like Tesseract struggle with real-world Indian receipts—crumpled paper, mixed Hindi-English text, handwritten notes, and inconsistent formats. Claude's vision model handles these edge cases natively without preprocessing pipelines or language-specific training.
+
+- **Mock GSTIN database for MVP**: The real GST Network API requires registered GSP (GST Suvidha Provider) credentials, rate limiting compliance, and production authentication flows. For this hackathon MVP, I used a seeded Supabase table to simulate compliance lookups. A production version would need to integrate with a licensed GSP or use the official GST Portal's API with proper OAuth flows.
+
+- **RLS architecture with split clients**: I configured Supabase with anon-only SELECT policies so the public client can read data for the dashboard, but all writes (INSERT/UPDATE/DELETE) go through a service role client on the server side. This prevents unauthorized data modification while keeping the read path simple.
+
 ## Tech Stack
 
 - **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS, shadcn/ui
@@ -116,8 +124,8 @@ lib/
 
 ## What I Learned
 
-The hardest part wasn't the AI integration—Claude's vision API handled receipt parsing better than I expected, even on low-quality images. The real challenge was understanding the GST compliance domain itself: learning what GSTIN formats look like, how ITC claims work, and why the timing of compliance checks matters. I also underestimated how much UI work goes into making a dashboard feel useful rather than just showing data. If I rebuilt this, I'd spend more time on the compliance service architecture—right now it uses a mock database, and integrating with the actual GST Network API would require handling rate limits, authentication flows, and stale data differently than I structured it.
+The hardest part wasn't the AI integration—Claude's vision API handled receipt parsing better than I expected, even on low-quality images. The real challenge was understanding the GST compliance domain itself: learning what GSTIN formats look like, how ITC claims work, and why the timing of compliance checks matters. I also underestimated how much UI work goes into making a dashboard feel useful rather than just showing data. If I rebuilt this, I'd spend more time on the compliance service architecture—right now it uses a mock database, and integrating with the actual GST Network API would require handling rate limits, authentication flows, and stale data differently than I structured it. One security tradeoff I discovered: using RLS with anon SELECT makes the dashboard snappy but means anyone with the Supabase URL could technically read expense data—in production, I'd add user authentication and scope RLS policies to authenticated users only.
 
 ## License
 
-MIT
+MIT — See LICENSE file
