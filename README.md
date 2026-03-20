@@ -76,7 +76,7 @@ There's also a chat interface where you can ask natural language questions about
 ### Setup
 
 ```bash
-git clone https://github.com/tacitusblindsbig/khatabook-ai-hackathon.git
+git clone https://github.com/Ndhakeph/khatabook-ai-hackathon.git
 cd khatabook-ai-hackathon
 npm install
 ```
