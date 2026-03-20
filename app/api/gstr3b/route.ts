@@ -46,7 +46,7 @@ export async function GET(req: Request) {
     let total_cess = 0;
 
     // Loop through receipts and sum values
-    records?.forEach((r: any) => {
+    records?.forEach((r: Record<string, unknown>) => {
        total_taxable += Number(r.taxable_value || 0);
        total_igst += Number(r.igst_amount || 0);
        total_cgst += Number(r.cgst_amount || 0);
@@ -187,8 +187,9 @@ export async function GET(req: Request) {
         },
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("GSTR-3B Generation Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

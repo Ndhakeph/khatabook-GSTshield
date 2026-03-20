@@ -26,7 +26,7 @@ export function StatCard({ label, value, variant = "default", icon }: StatCardPr
           variant === "danger" && "text-red-400",
           variant === "success" && "text-green-600/60"
         )}>
-          // {label}
+          {"// "}{label}
         </div>
         {icon && (
           <div className={cn(

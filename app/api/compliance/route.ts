@@ -13,8 +13,9 @@ export async function GET() {
             records: recordsRes.data || [],
             stats: statsRes.data || { total_outstanding: 0, itc_at_risk: 0, safe_to_pay: 0 }
         });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
 
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
         }
 
         return NextResponse.json(res.data);
-    } catch (e) {
+    } catch {
         return NextResponse.json({ error: "Invalid Request" }, { status: 400 });
     }
 }
@@ -43,7 +44,7 @@ export async function PATCH(req: Request) {
         if (!res.success) return NextResponse.json({ error: res.error }, { status: 500 });
 
         return NextResponse.json(res.data);
-    } catch (e) {
+    } catch {
         return NextResponse.json({ error: "Invalid Request" }, { status: 400 });
     }
 }
@@ -58,7 +59,7 @@ export async function DELETE(req: Request) {
         if (!res.success) return NextResponse.json({ error: res.error }, { status: 500 });
 
         return NextResponse.json({ success: true });
-    } catch (e) {
+    } catch {
         return NextResponse.json({ error: "Invalid Request" }, { status: 400 });
     }
 }

@@ -7,11 +7,6 @@ interface BottomNavProps {
   onScanClick: () => void;
 }
 
-const navItems = [
-  { title: "Home", url: "/", icon: Home },
-  { title: "Shield", url: "/compliance", icon: ShieldCheck },
-];
-
 export function BottomNav({ onScanClick }: BottomNavProps) {
   const pathname = usePathname();
 

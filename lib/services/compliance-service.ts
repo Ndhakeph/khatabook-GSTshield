@@ -36,9 +36,10 @@ export class ComplianceService {
             if (error) throw error;
 
             return { success: true, data: data as ComplianceRecord[] };
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error fetching compliance records:', error);
-            return { success: false, error: error.message };
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            return { success: false, error: message };
         }
     }
 
@@ -67,9 +68,10 @@ export class ComplianceService {
 
             return { success: true, data: stats };
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error fetching stats:', error);
-            return { success: false, error: error.message };
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            return { success: false, error: message };
         }
     }
 
@@ -110,9 +112,10 @@ export class ComplianceService {
 
             return { success: true, data: data as ComplianceRecord };
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error adding compliance record:', error);
-            return { success: false, error: error.message };
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            return { success: false, error: message };
         }
     }
 
@@ -128,8 +131,9 @@ export class ComplianceService {
 
             if (error) throw error;
             return { success: true, data: data as ComplianceRecord };
-        } catch (error: any) {
-            return { success: false, error: error.message };
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            return { success: false, error: message };
         }
     }
 
@@ -143,8 +147,9 @@ export class ComplianceService {
 
             if (error) throw error;
             return { success: true, data: true };
-        } catch (error: any) {
-            return { success: false, error: error.message };
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            return { success: false, error: message };
         }
     }
 }

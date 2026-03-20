@@ -49,7 +49,7 @@ const Index = () => {
 
       // Simple CSV conversion
       const headers = ["Invoice ID", "Date", "Vendor", "GSTIN", "Amount", "Status"];
-      const rows = data.records.map((r: any) => [
+      const rows = data.records.map((r: Record<string, unknown>) => [
         r.id,
         r.invoice_date,
         r.vendor_name,
@@ -60,7 +60,7 @@ const Index = () => {
 
       const csvContent = [
         headers.join(","),
-        ...rows.map((row: any[]) => row.join(","))
+        ...rows.map((row: unknown[]) => row.join(","))
       ].join("\n");
 
       const blob = new Blob([csvContent], { type: "text/csv" });
@@ -139,7 +139,7 @@ const Index = () => {
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-              // DASHBOARD
+              {"// DASHBOARD"}
             </div>
             <h1 className="mt-1 font-mono text-2xl font-bold">
               HEADS UP DISPLAY
@@ -191,7 +191,7 @@ const Index = () => {
       {/* Quick Actions */}
       <div className="mt-8 border border-dotted border-foreground/30 p-4">
         <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-3">
-          // QUICK ACTIONS
+          {"// QUICK ACTIONS"}
         </div>
         <div className="flex flex-wrap gap-2">
           <Button
@@ -235,11 +235,11 @@ const Index = () => {
       {/* Footer Info */}
       <div className="mt-8 font-mono text-[10px] text-muted-foreground">
         <div className="flex items-center gap-4">
-          <span>// GSTIN VALIDATION: ACTIVE</span>
+          <span>{"// GSTIN VALIDATION: ACTIVE"}</span>
           <span className="w-px h-3 bg-foreground/20" />
-          <span>// ITC MATCHING: ENABLED</span>
+          <span>{"// ITC MATCHING: ENABLED"}</span>
           <span className="w-px h-3 bg-foreground/20" />
-          <span>// AUTO-BLOCK: ON</span>
+          <span>{"// AUTO-BLOCK: ON"}</span>
         </div>
       </div>
     </DashboardLayout>

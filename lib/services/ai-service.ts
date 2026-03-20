@@ -63,13 +63,14 @@ INSTRUCTIONS:
 
             return { success: true, data: reply };
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('FastRouter Chat Error:', error);
-            return { success: false, error: error.message };
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            return { success: false, error: message };
         }
     }
 
-    async analyzeReceipt(base64Image: string, mimeType: string = 'image/jpeg'): Promise<ServiceResponse<any>> {
+    async analyzeReceipt(base64Image: string, mimeType: string = 'image/jpeg'): Promise<ServiceResponse<Record<string, unknown>>> {
         try {
             if (!process.env.FASTROUTER_API_KEY) {
                 return { success: false, error: 'FastRouter API Key is missing' };
@@ -103,14 +104,15 @@ INSTRUCTIONS:
                 const jsonStr = content.replace(/```json/g, '').replace(/```/g, '').trim();
                 const data = JSON.parse(jsonStr);
                 return { success: true, data };
-            } catch (e) {
+            } catch {
                 console.error("Failed to parse OCR JSON", content);
                 return { success: false, error: "Failed to parse receipt data" };
             }
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('FastRouter OCR Error:', error);
-            return { success: false, error: error.message };
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            return { success: false, error: message };
         }
     }
 }

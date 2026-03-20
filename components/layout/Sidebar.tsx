@@ -74,7 +74,7 @@ export function Sidebar({ onScanClick }: SidebarProps) {
           {/* Navigation */}
           <nav className="flex-1 p-4">
             <div className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest mb-4">
-              // NAVIGATION
+              {"// NAVIGATION"}
             </div>
             <ul className="space-y-1">
               {menuItems.map((item) => {

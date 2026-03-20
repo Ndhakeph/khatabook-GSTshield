@@ -8,7 +8,7 @@ export default function CompliancePage() {
         <DashboardLayout>
             <div className="mb-8">
                 <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-          // COMPLIANCE
+                    {"// COMPLIANCE"}
                 </div>
                 <h1 className="mt-1 font-mono text-2xl font-bold">
                     COMPLIANCE SHIELD
@@ -52,7 +52,7 @@ export default function CompliancePage() {
 
             <div className="p-4 border border-border bg-card">
                 <div className="text-center py-10 font-mono text-muted-foreground">
-          // COMPLIANCE DATA VISUALIZATION PLACEHOLDER
+                    {"// COMPLIANCE DATA VISUALIZATION PLACEHOLDER"}
                 </div>
             </div>
         </DashboardLayout>

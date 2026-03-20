@@ -18,7 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { CheckCircle2, AlertTriangle, ShieldX, Loader2 } from "lucide-react";
+import { CheckCircle2, ShieldX, Loader2 } from "lucide-react";
 
 interface Invoice {
   id: string;
@@ -50,7 +50,7 @@ export function ComplianceTable({ onStatsRefresh }: ComplianceTableProps) {
 
         if (data.records) {
           // Map DB response to frontend interface
-          const mapped: Invoice[] = data.records.map((r: any) => ({
+          const mapped: Invoice[] = data.records.map((r: Record<string, unknown>) => ({
             id: r.id,
             date: r.invoice_date,
             vendor: r.vendor_name,
@@ -153,7 +153,7 @@ export function ComplianceTable({ onStatsRefresh }: ComplianceTableProps) {
       <div className="border-b border-foreground p-4 flex items-center justify-between">
         <div>
           <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-            // COMPLIANCE GRID
+            {"// COMPLIANCE GRID"}
           </div>
           <div className="mt-1 font-mono text-sm">
             Recent Invoices — GST Verification Status

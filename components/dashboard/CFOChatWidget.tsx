@@ -44,7 +44,7 @@ export function CFOChatWidget() {
       } else {
         throw new Error(data.error || "Failed to get response");
       }
-    } catch (error) {
+    } catch {
       setMessages((prev) => [
         ...prev,
         { role: "ai", text: "> ERROR: Unable to connect to AI core. Please check API configuration." },

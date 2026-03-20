@@ -14,9 +14,9 @@ export async function GET() {
         } else {
             dbStatus = 'connected';
         }
-    } catch (e: any) {
+    } catch (e: unknown) {
         dbStatus = 'failure';
-        errorMsg = e.message;
+        errorMsg = e instanceof Error ? e.message : 'Unknown error';
     }
 
     return NextResponse.json({

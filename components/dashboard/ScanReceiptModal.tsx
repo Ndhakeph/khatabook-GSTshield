@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Upload, X, ScanLine, Camera, AlertTriangle, ShieldX, Ban, CreditCard, CheckCircle2, ChevronRight } from "lucide-react";
+import { Upload, X, ScanLine, Camera, AlertTriangle, ShieldX, Ban, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -57,7 +57,7 @@ function TerminalProcessing({ logs }: { logs: string[] }) {
 
       <div className="flex-1 p-8 overflow-auto space-y-2" ref={scrollRef}>
         <div className="flex items-center gap-2 text-black/40 mb-6 uppercase tracking-widest text-xs border-b border-black/10 pb-2">
-          <span>// SYSTEM_LOGS</span>
+          <span>{"// SYSTEM_LOGS"}</span>
           <span className="ml-auto">LIVE_FEED</span>
         </div>
 
@@ -98,7 +98,7 @@ function ResultCard({ data, onClose, onSave, isSaving }: { data: ScannedData; on
       {/* Header Info */}
       <div className="border-b border-dashed border-black/20 pb-6 mb-6">
         <div className="text-[10px] text-black/40 uppercase tracking-[0.2em] mb-2">
-          // SCANNED INVOICE
+          {"// SCANNED INVOICE"}
         </div>
         <div className="flex justify-between items-start">
           <div>
@@ -148,7 +148,7 @@ function ResultCard({ data, onClose, onSave, isSaving }: { data: ScannedData; on
       {/* Risk Grid */}
       <div className="border border-black/10 p-4 mb-6 bg-black/[0.02]">
         <div className="text-[10px] text-black/40 uppercase tracking-[0.2em] mb-4">
-          // RISK ASSESSMENT
+          {"// RISK ASSESSMENT"}
         </div>
         <div className="grid grid-cols-2 gap-y-3 gap-x-8">
           <div className="flex items-center justify-between text-xs">
@@ -192,7 +192,7 @@ function ResultCard({ data, onClose, onSave, isSaving }: { data: ScannedData; on
       {/* Financials */}
       <div className="border border-black p-4 mb-8">
         <div className="text-[10px] text-black/40 uppercase tracking-[0.2em] mb-4">
-          // INVOICE DETAILS
+          {"// INVOICE DETAILS"}
         </div>
         <div className="flex justify-between items-end border-b border-dashed border-black/20 pb-2 mb-2">
           <span className="text-xl font-bold uppercase">TOTAL</span>
@@ -427,8 +427,9 @@ export function ScanReceiptModal({ isOpen, onClose, onScanComplete }: ScanReceip
         throw new Error(data.error || "Extraction failed");
       }
 
-    } catch (err: any) {
-      setLogs(prev => [...prev, `ERROR: ${err.message}`]);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      setLogs(prev => [...prev, `ERROR: ${message}`]);
       setTimeout(() => setScanState("upload"), 4000);
     }
   };
@@ -460,11 +461,8 @@ export function ScanReceiptModal({ isOpen, onClose, onScanComplete }: ScanReceip
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       processFile(e.dataTransfer.files[0]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const handleContentClick = () => {
-    fileInputRef.current?.click();
-  };
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -500,7 +498,7 @@ export function ScanReceiptModal({ isOpen, onClose, onScanComplete }: ScanReceip
             <div>
               <div className="font-mono text-sm font-bold uppercase tracking-wider">SCAN_RECEIPT</div>
               <div className="font-mono text-[10px] text-black/50 uppercase tracking-widest">
-                // CLAUDE AI VISION ENGINE
+                {"// CLAUDE AI VISION ENGINE"}
               </div>
             </div>
           </div>

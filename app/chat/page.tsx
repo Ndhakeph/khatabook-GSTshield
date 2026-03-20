@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { Terminal, Send, ArrowRight } from "lucide-react";
+import { Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function ChatPage() {
@@ -45,7 +45,7 @@ export default function ChatPage() {
             } else {
                 throw new Error(data.error || "Failed to get response");
             }
-        } catch (error) {
+        } catch {
             setMessages((prev) => [
                 ...prev,
                 { role: "ai", text: "> ERROR: CONNECTION FAILURE. RETRYING..." },
@@ -61,7 +61,7 @@ export default function ChatPage() {
                 {/* Page Title */}
                 <div className="mb-6">
                     <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-                        // AI CFO ASSISTANT
+                        {"// AI CFO ASSISTANT"}
                     </div>
                     <h1 className="mt-1 font-mono text-3xl font-bold tracking-tight uppercase">
                         FINANCIAL INTELLIGENCE TERMINAL
@@ -145,7 +145,7 @@ export default function ChatPage() {
                 {/* Capabilities Footer */}
                 <div className="mt-8 mb-4">
                     <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-2">
-                        // AI CAPABILITIES
+                        {"// AI CAPABILITIES"}
                     </div>
                     <div className="flex flex-wrap gap-x-8 gap-y-2 font-mono text-[10px] text-zinc-500 uppercase">
                         <span className="flex items-center gap-2">
