@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import PDFDocument from 'pdfkit';
-import { supabase } from '@/lib/db/supabase';
+import { complianceService } from '@/lib/services/compliance-service';
 
 export const runtime = 'nodejs';
 
@@ -27,16 +27,13 @@ export async function GET(req: Request) {
     // Last day: Day 0 of next month gets the last day of previous month
     const endDate = new Date(year, month, 0).toISOString().split('T')[0];
 
-    // Fetch Data from receipts (compliance_records)
-    const { data: records, error } = await supabase
-      .from('compliance_records')
-      .select('*')
-      .gte('invoice_date', startDate)
-      .lte('invoice_date', endDate);
-
-    if (error) {
-      throw error;
-    }
+    // Fetch records (falls back to baked sample data if the DB is unreachable)
+    // and filter to the requested return period. ISO YYYY-MM-DD strings sort
+    // lexicographically, so a plain string range works.
+    const { records: allRecords } = await complianceService.getComplianceRecords();
+    const records = allRecords.filter(
+      (r) => r.invoice_date >= startDate && r.invoice_date <= endDate,
+    );
 
     // Initialize variables
     let total_taxable = 0;
@@ -46,7 +43,7 @@ export async function GET(req: Request) {
     let total_cess = 0;
 
     // Loop through receipts and sum values
-    records?.forEach((r: Record<string, unknown>) => {
+    records.forEach((r) => {
        total_taxable += Number(r.taxable_value || 0);
        total_igst += Number(r.igst_amount || 0);
        total_cgst += Number(r.cgst_amount || 0);
@@ -155,7 +152,7 @@ export async function GET(req: Request) {
         const valueX = startX + 250;
 
         doc.text('Total Records Processed:', labelX, textY);
-        doc.text(records?.length.toString() || '0', valueX, textY);
+        doc.text(records.length.toString(), valueX, textY);
         textY += 15;
 
         doc.text('Total Taxable Value:', labelX, textY);

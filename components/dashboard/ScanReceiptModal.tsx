@@ -2,15 +2,19 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { Upload, X, ScanLine, Camera, AlertTriangle, ShieldX, Ban, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import type { ComplianceRecord } from "@/lib/services/compliance-service";
+import type { GstinVerdict } from "@/lib/gstin";
 
 
 interface ScanReceiptModalProps {
   isOpen: boolean;
   onClose: () => void;
   onScanComplete?: () => void;
+  onSessionAdd?: (record: ComplianceRecord) => void;
 }
 
-type ScanState = "upload" | "processing" | "result" | "error";
+type ScanState = "upload" | "processing" | "result" | "error" | "info";
 
 interface ScannedData {
   vendor_name?: string;
@@ -82,8 +86,9 @@ function TerminalProcessing({ logs }: { logs: string[] }) {
   );
 }
 
-function ResultCard({ data, onClose, onSave, isSaving }: { data: ScannedData; onClose: () => void; onSave: (status: 'Safe' | 'Failed') => void; isSaving: boolean }) {
-  const isSafe = !data.status || data.status === 'Safe';
+function ResultCard({ data, validation, onClose, onSave, isSaving }: { data: ScannedData; validation: GstinVerdict | null; onClose: () => void; onSave: (status: 'Safe' | 'Failed') => void; isSaving: boolean }) {
+  // The deterministic validator is authoritative; the model's guess is ignored.
+  const isSafe = validation ? validation.valid : (!data.status || data.status === 'Safe');
 
   const formatCurrency = (val?: number) => {
     return val ? new Intl.NumberFormat("en-IN", {
@@ -136,10 +141,15 @@ function ResultCard({ data, onClose, onSave, isSaving }: { data: ScannedData; on
               {isSafe ? "COMPLIANT VENDOR" : "COMPLIANCE RISK DETECTED"}
             </div>
             <div className="text-xs mt-1 text-black/70">
-              {isSafe
-                ? "GSTIN verified. Safe to proceed with payment."
-                : "Vendor GSTIN verification failed. ITC Claim may be rejected."
-              }
+              {validation
+                ? validation.reason
+                : isSafe
+                  ? "GSTIN verified. Safe to proceed with payment."
+                  : "Vendor GSTIN verification failed. ITC Claim may be rejected."}
+            </div>
+            <div className="text-[10px] mt-2 uppercase tracking-widest text-black/40">
+              {"// GSTIN CHECKSUM: "}
+              <span className="font-bold text-black/70">{isSafe ? "PASS" : "FAIL"}</span>
             </div>
           </div>
         </div>
@@ -231,11 +241,13 @@ function ResultCard({ data, onClose, onSave, isSaving }: { data: ScannedData; on
   );
 }
 
-export function ScanReceiptModal({ isOpen, onClose, onScanComplete }: ScanReceiptModalProps) {
+export function ScanReceiptModal({ isOpen, onClose, onScanComplete, onSessionAdd }: ScanReceiptModalProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [scanState, setScanState] = useState<ScanState>("upload");
   const [logs, setLogs] = useState<string[]>([]);
   const [scannedData, setScannedData] = useState<ScannedData | null>(null);
+  const [validation, setValidation] = useState<GstinVerdict | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = useState(false); // Add saving state
 
@@ -259,6 +271,8 @@ export function ScanReceiptModal({ isOpen, onClose, onScanComplete }: ScanReceip
     setScanState("upload");
     setLogs([]);
     setScannedData(null);
+    setValidation(null);
+    setInfoMessage(null);
     setIsSaving(false);
     onClose();
   }, [onClose, stopCamera]);
@@ -313,23 +327,22 @@ export function ScanReceiptModal({ isOpen, onClose, onScanComplete }: ScanReceip
     if (!scannedData) return;
     setIsSaving(true);
 
-    try {
-      // Prepare payload
-      const payload = {
-        vendor_name: scannedData.vendor_name,
-        gstin: scannedData.gstin,
-        amount: scannedData.total_amount,
-        status: status,
-        invoice_date: scannedData.invoice_date,
-        taxable_value: scannedData.taxable_value,
-        cgst_amount: scannedData.cgst_amount,
-        sgst_amount: scannedData.sgst_amount,
-        igst_amount: scannedData.igst_amount,
-        cess_amount: scannedData.cess_amount,
-        invoice_number: scannedData.invoice_number,
-        place_of_supply: scannedData.place_of_supply
-      };
+    const payload = {
+      vendor_name: scannedData.vendor_name,
+      gstin: scannedData.gstin,
+      amount: scannedData.total_amount,
+      status: status,
+      invoice_date: scannedData.invoice_date,
+      taxable_value: scannedData.taxable_value,
+      cgst_amount: scannedData.cgst_amount,
+      sgst_amount: scannedData.sgst_amount,
+      igst_amount: scannedData.igst_amount,
+      cess_amount: scannedData.cess_amount,
+      invoice_number: scannedData.invoice_number,
+      place_of_supply: scannedData.place_of_supply
+    };
 
+    try {
       const res = await fetch('/api/compliance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -338,14 +351,37 @@ export function ScanReceiptModal({ isOpen, onClose, onScanComplete }: ScanReceip
 
       if (!res.ok) throw new Error("Failed to save record");
 
-      // Success
+      // Persisted to Neon — refresh the grid from the server.
+      toast.success("Receipt saved", {
+        description: `${scannedData.vendor_name || "Vendor"} added to your compliance grid.`,
+      });
       if (onScanComplete) onScanComplete();
       handleClose();
-
-    } catch (e) {
-      console.error("Save failed", e);
-      alert("Failed to save record. Please try again.");
-      setIsSaving(false);
+    } catch {
+      // Database read-only or offline — keep it in this session, no error alert.
+      const sessionRecord: ComplianceRecord = {
+        id:
+          typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+            ? crypto.randomUUID()
+            : `session-${Date.now()}`,
+        vendor_name: scannedData.vendor_name || "Unknown Vendor",
+        gstin: scannedData.gstin || "",
+        status,
+        amount: Number(scannedData.total_amount) || 0,
+        invoice_date: scannedData.invoice_date || new Date().toISOString().split("T")[0],
+        taxable_value: Number(scannedData.taxable_value) || 0,
+        cgst_amount: Number(scannedData.cgst_amount) || 0,
+        sgst_amount: Number(scannedData.sgst_amount) || 0,
+        igst_amount: Number(scannedData.igst_amount) || 0,
+        cess_amount: Number(scannedData.cess_amount) || 0,
+        invoice_number: scannedData.invoice_number,
+        place_of_supply: scannedData.place_of_supply,
+      };
+      onSessionAdd?.(sessionRecord);
+      toast("Added to this session", {
+        description: "Saved locally — the database is read-only or offline.",
+      });
+      handleClose();
     }
   };
 
@@ -414,23 +450,27 @@ export function ScanReceiptModal({ isOpen, onClose, onScanComplete }: ScanReceip
         }),
       });
 
-      setLogs(prev => [...prev, "ANALYZING RECEIPT...", "EXTRACTING DATA..."]);
+      setLogs(prev => [...prev, "ANALYZING RECEIPT...", "EXTRACTING DATA...", "VALIDATING GSTIN (CHECKSUM)..."]);
       const data = await res.json();
 
       if (data.data) {
         setLogs(prev => [...prev, "SUCCESS.", "RENDERING..."]);
         setTimeout(() => {
           setScannedData(data.data);
+          setValidation(data.validation ?? null);
           setScanState("result");
         }, 800);
+      } else if (data.friendly) {
+        // No API key / rate limited / unreadable — show a calm message, no red error.
+        setInfoMessage(data.friendly);
+        setScanState("info");
       } else {
         throw new Error(data.error || "Extraction failed");
       }
 
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      setLogs(prev => [...prev, `ERROR: ${message}`]);
-      setTimeout(() => setScanState("upload"), 4000);
+    } catch {
+      setInfoMessage("Something went wrong while scanning. Please try again in a moment.");
+      setScanState("info");
     }
   };
 
@@ -443,8 +483,8 @@ export function ScanReceiptModal({ isOpen, onClose, onScanComplete }: ScanReceip
       processBase64(resizedDataUrl);
     } catch (e) {
       console.error(e);
-      setScanState("upload");
-      alert("Failed to process image. Please try another file.");
+      setInfoMessage("Couldn't read that image file. Please try another photo or a clearer scan.");
+      setScanState("info");
     }
   };
 
@@ -479,6 +519,8 @@ export function ScanReceiptModal({ isOpen, onClose, onScanComplete }: ScanReceip
       setScanState("upload");
       setLogs([]);
       setScannedData(null);
+      setValidation(null);
+      setInfoMessage(null);
     }
   }, [isOpen]);
 
@@ -608,7 +650,23 @@ export function ScanReceiptModal({ isOpen, onClose, onScanComplete }: ScanReceip
           )}
 
           {scanState === "result" && scannedData && (
-            <ResultCard data={scannedData} onClose={handleClose} onSave={handleSave} isSaving={isSaving} />
+            <ResultCard data={scannedData} validation={validation} onClose={handleClose} onSave={handleSave} isSaving={isSaving} />
+          )}
+
+          {scanState === "info" && (
+            <div className="h-full flex flex-col items-center justify-center text-center p-8 font-mono relative z-10">
+              <div className="w-12 h-12 border-2 border-black flex items-center justify-center mb-6">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div className="text-sm font-bold uppercase tracking-widest mb-3">Heads Up</div>
+              <p className="text-xs text-black/60 max-w-sm leading-relaxed">{infoMessage}</p>
+              <Button
+                onClick={handleClose}
+                className="mt-8 h-11 px-8 border-2 border-black bg-white text-black hover:bg-black hover:text-white transition-colors uppercase font-bold tracking-widest text-xs rounded-none"
+              >
+                Close
+              </Button>
+            </div>
           )}
         </div>
       </div>

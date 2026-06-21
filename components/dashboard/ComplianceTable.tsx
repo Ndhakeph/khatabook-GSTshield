@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,119 +18,62 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { CheckCircle2, ShieldX, Loader2 } from "lucide-react";
+import { CheckCircle2, ShieldX, Loader2, Database } from "lucide-react";
+import type { ComplianceRecord, DataSource } from "@/lib/services/compliance-service";
 
-interface Invoice {
-  id: string;
-  date: string;
-  vendor: string;
-  gstin: string;
-  status: "Safe" | "Failed" | "Pending";
-  amount: number;
-}
+type Status = ComplianceRecord["status"];
 
 interface ComplianceTableProps {
-  onStatsRefresh?: () => void;
+  records: ComplianceRecord[];
+  loading: boolean;
+  source: DataSource;
+  onRemove: (id: string) => void;
+  onVerify: (id: string) => void;
 }
 
-export function ComplianceTable({ onStatsRefresh }: ComplianceTableProps) {
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Action State
-  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+export function ComplianceTable({ records, loading, source, onRemove, onVerify }: ComplianceTableProps) {
+  const [selected, setSelected] = useState<ComplianceRecord | null>(null);
   const [actionType, setActionType] = useState<"pay" | "block" | "verify" | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const res = await fetch('/api/compliance');
-        const data = await res.json();
-
-        if (data.records) {
-          // Map DB response to frontend interface
-          const mapped: Invoice[] = data.records.map((r: Record<string, unknown>) => ({
-            id: r.id,
-            date: r.invoice_date,
-            vendor: r.vendor_name,
-            gstin: r.gstin,
-            status: r.status,
-            amount: r.amount
-          }));
-          setInvoices(mapped);
-        }
-      } catch (e) {
-        console.error("Failed to fetch compliance data", e);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchData();
-  }, []);
-
-  const handleAction = (invoice: Invoice, type: "pay" | "block" | "verify") => {
-    setSelectedInvoice(invoice);
+  const handleAction = (record: ComplianceRecord, type: "pay" | "block" | "verify") => {
+    setSelected(record);
     setActionType(type);
   };
 
   const executeAction = async () => {
-    if (!selectedInvoice || !actionType) return;
-
+    if (!selected || !actionType) return;
     setIsProcessing(true);
+    const id = selected.id;
 
     try {
-      if (actionType === 'pay') {
-        // DELETE the record (Clean up)
-        await fetch(`/api/compliance?id=${selectedInvoice.id}`, { method: 'DELETE' });
-
-        // Remove from local state
-        setInvoices(prev => prev.filter(i => i.id !== selectedInvoice.id));
-
+      if (actionType === "pay") {
+        onRemove(id);
+        fetch(`/api/compliance?id=${id}`, { method: "DELETE" }).catch(() => {});
         toast.success("Payment Processed", {
-          description: `₹${formatAmount(selectedInvoice.amount)} transferred to ${selectedInvoice.vendor}`,
+          description: `${formatAmount(selected.amount)} transferred to ${selected.vendor_name}`,
         });
-        onStatsRefresh?.();
-
-      } else if (actionType === 'block') {
-        // DELETE (Archive) or Update to blocked? User said "entry should be gone". 
-        // Let's DELETE for now to clear the list, assuming "Blocked" items are handled elsewhere.
-        await fetch(`/api/compliance?id=${selectedInvoice.id}`, { method: 'DELETE' });
-
-        setInvoices(prev => prev.filter(i => i.id !== selectedInvoice.id));
-
+      } else if (actionType === "block") {
+        onRemove(id);
+        fetch(`/api/compliance?id=${id}`, { method: "DELETE" }).catch(() => {});
         toast.error("Vendor Blocked & Removed", {
-          description: `Future payments to ${selectedInvoice.vendor} will be rejected.`,
+          description: `Future payments to ${selected.vendor_name} will be rejected.`,
         });
-        onStatsRefresh?.();
-
-      } else if (actionType === 'verify') {
-        // UPDATE status to 'Safe'
-        const res = await fetch('/api/compliance', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: selectedInvoice.id, status: 'Safe' })
+      } else if (actionType === "verify") {
+        onVerify(id);
+        fetch("/api/compliance", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, status: "Safe" }),
+        }).catch(() => {});
+        toast.success("Verification Successful", {
+          description: "Vendor GSTIN verified against database.",
         });
-
-        if (res.ok) {
-          setInvoices(prev => prev.map(i =>
-            i.id === selectedInvoice.id ? { ...i, status: 'Safe' } : i
-          ));
-          toast.success("Verification Successful", {
-            description: "Vendor GSTIN verified against database.",
-          });
-          onStatsRefresh?.();
-        } else {
-          throw new Error("Verification Failed");
-        }
       }
-    } catch (e) {
-      console.error(e);
-      toast.error("Action Failed", { description: "Something went wrong. Please try again." });
     } finally {
       setIsProcessing(false);
       setActionType(null);
-      setSelectedInvoice(null);
+      setSelected(null);
     }
   };
 
@@ -141,10 +84,6 @@ export function ComplianceTable({ onStatsRefresh }: ComplianceTableProps) {
       minimumFractionDigits: 0,
     }).format(amount);
   };
-
-  if (loading) {
-    return <div className="p-4 font-mono text-xs">LOADING DATA...</div>;
-  }
 
   return (
     <div className="relative border border-foreground bg-background">
@@ -159,78 +98,88 @@ export function ComplianceTable({ onStatsRefresh }: ComplianceTableProps) {
             Recent Invoices — GST Verification Status
           </div>
         </div>
-        <div className="text-[10px] font-mono text-muted-foreground">
-          {invoices.length} RECORDS
+        <div className="flex items-center gap-3">
+          {source === "sample" && (
+            <span className="inline-flex items-center gap-1.5 px-2 py-1 border border-amber-300 bg-amber-50 text-amber-700 font-mono text-[10px] uppercase tracking-wider">
+              <Database className="h-3 w-3" />
+              Sample Data
+            </span>
+          )}
+          <div className="text-[10px] font-mono text-muted-foreground">
+            {records.length} RECORDS
+          </div>
         </div>
       </div>
 
-      {/* Table */}
-      <Table>
-        <TableHeader>
-          <TableRow className="border-b border-foreground hover:bg-transparent">
-            <TableHead className="font-mono text-[10px] uppercase border-r border-foreground/20 py-2">Date</TableHead>
-            <TableHead className="font-mono text-[10px] uppercase border-r border-foreground/20 py-2">Vendor</TableHead>
-            <TableHead className="font-mono text-[10px] uppercase border-r border-foreground/20 py-2 hidden md:table-cell">GSTIN</TableHead>
-            <TableHead className="font-mono text-[10px] uppercase border-r border-foreground/20 py-2">Status</TableHead>
-            <TableHead className="font-mono text-[10px] uppercase border-r border-foreground/20 py-2 text-right">Amount</TableHead>
-            <TableHead className="font-mono text-[10px] uppercase py-2 text-right">Action</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {invoices.map((invoice) => {
-            const isFailed = invoice.status === "Failed";
-            const isPending = invoice.status === "Pending";
+      {loading ? (
+        <div className="p-6 font-mono text-xs text-muted-foreground">LOADING DATA...</div>
+      ) : records.length === 0 ? (
+        <div className="p-10 text-center font-mono text-xs text-muted-foreground">
+          {"// NO INVOICES YET — SCAN A RECEIPT TO GET STARTED"}
+        </div>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow className="border-b border-foreground hover:bg-transparent">
+              <TableHead className="font-mono text-[10px] uppercase border-r border-foreground/20 py-2">Date</TableHead>
+              <TableHead className="font-mono text-[10px] uppercase border-r border-foreground/20 py-2">Vendor</TableHead>
+              <TableHead className="font-mono text-[10px] uppercase border-r border-foreground/20 py-2 hidden md:table-cell">GSTIN</TableHead>
+              <TableHead className="font-mono text-[10px] uppercase border-r border-foreground/20 py-2">Status</TableHead>
+              <TableHead className="font-mono text-[10px] uppercase border-r border-foreground/20 py-2 text-right">Amount</TableHead>
+              <TableHead className="font-mono text-[10px] uppercase py-2 text-right">Action</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {records.map((invoice) => {
+              const isFailed = invoice.status === "Failed";
+              const isPending = invoice.status === "Pending";
 
-            return (
-              <TableRow
-                key={invoice.id}
-                className={cn(
-                  "border-b border-black/5 transition-colors cursor-default",
-                  !isFailed && !isPending && "hover:bg-zinc-50",
-                  isFailed && "bg-red-50 hover:bg-red-50"
-                )}
-              >
-                <TableCell className={cn(
-                  "font-mono text-xs py-4 pl-6 border-r border-black/5 relative overflow-hidden",
-                  // Red Stripe for Failed
-                  isFailed && "text-red-900"
-                )}>
-                  {isFailed && <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500" />}
-                  {invoice.date}
-                </TableCell>
-                <TableCell className={cn(
-                  "font-sans text-xs font-medium py-4 border-r border-black/5",
-                  isFailed ? "text-red-900" : "text-zinc-700"
-                )}>{invoice.vendor}</TableCell>
-                <TableCell className={cn(
-                  "font-mono text-[10px] text-zinc-400 py-4 border-r border-black/5 hidden md:table-cell",
-                  isFailed && "text-red-800/60"
-                )}>
-                  {invoice.gstin}
-                </TableCell>
-                <TableCell className={cn(
-                  "py-4 border-r border-black/5"
-                )}>
-                  <StatusBadge status={invoice.status} />
-                </TableCell>
-                <TableCell className={cn(
-                  "font-mono text-xs py-4 text-right border-r border-black/5 font-bold",
-                  isFailed ? "text-red-900" : "text-black"
-                )}>
-                  {formatAmount(invoice.amount)}
-                </TableCell>
-                <TableCell className={cn(
-                  "text-right py-4 pr-6"
-                )}>
-                  <ActionButton status={invoice.status} onAction={(type) => handleAction(invoice, type)} />
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+              return (
+                <TableRow
+                  key={invoice.id}
+                  className={cn(
+                    "border-b border-black/5 transition-colors cursor-default",
+                    !isFailed && !isPending && "hover:bg-zinc-50",
+                    isFailed && "bg-red-50 hover:bg-red-50"
+                  )}
+                >
+                  <TableCell className={cn(
+                    "font-mono text-xs py-4 pl-6 border-r border-black/5 relative overflow-hidden",
+                    isFailed && "text-red-900"
+                  )}>
+                    {isFailed && <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500" />}
+                    {invoice.invoice_date}
+                  </TableCell>
+                  <TableCell className={cn(
+                    "font-sans text-xs font-medium py-4 border-r border-black/5",
+                    isFailed ? "text-red-900" : "text-zinc-700"
+                  )}>{invoice.vendor_name}</TableCell>
+                  <TableCell className={cn(
+                    "font-mono text-[10px] text-zinc-400 py-4 border-r border-black/5 hidden md:table-cell",
+                    isFailed && "text-red-800/60"
+                  )}>
+                    {invoice.gstin}
+                  </TableCell>
+                  <TableCell className="py-4 border-r border-black/5">
+                    <StatusBadge status={invoice.status} />
+                  </TableCell>
+                  <TableCell className={cn(
+                    "font-mono text-xs py-4 text-right border-r border-black/5 font-bold",
+                    isFailed ? "text-red-900" : "text-black"
+                  )}>
+                    {formatAmount(invoice.amount)}
+                  </TableCell>
+                  <TableCell className="text-right py-4 pr-6">
+                    <ActionButton status={invoice.status} onAction={(type) => handleAction(invoice, type)} />
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      )}
 
-      {/* Action Dialog (Dummy UI) */}
+      {/* Action Dialog */}
       <Dialog open={!!actionType} onOpenChange={(open: boolean) => !open && setActionType(null)}>
         <DialogContent className="sm:max-w-md border-2 border-black rounded-none shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-white">
           <DialogHeader>
@@ -244,11 +193,11 @@ export function ComplianceTable({ onStatsRefresh }: ComplianceTableProps) {
               {actionType === 'verify' && "Verifying Details"}
             </DialogTitle>
             <DialogDescription className="font-mono text-xs pt-2">
-              {selectedInvoice && (
+              {selected && (
                 <>
-                  Action for invoice <strong>{selectedInvoice.vendor}</strong> ({formatAmount(selectedInvoice.amount)})
+                  Action for invoice <strong>{selected.vendor_name}</strong> ({formatAmount(selected.amount)})
                   <br />
-                  GSTIN: {selectedInvoice.gstin}
+                  GSTIN: {selected.gstin}
                 </>
               )}
             </DialogDescription>
@@ -290,14 +239,14 @@ export function ComplianceTable({ onStatsRefresh }: ComplianceTableProps) {
   );
 }
 
-function StatusBadge({ status }: { status: Invoice["status"] }) {
+function StatusBadge({ status }: { status: Status }) {
   if (status === "Failed") {
     return (
       <span className="inline-flex items-center px-3 py-1 bg-white border border-red-200 text-red-600 font-bold font-mono text-[10px] uppercase shadow-sm">
         <span className="w-2 h-2 bg-red-500 mr-2" />
         FAILED
       </span>
-    )
+    );
   }
 
   if (status === "Safe") {
@@ -306,7 +255,7 @@ function StatusBadge({ status }: { status: Invoice["status"] }) {
         <span className="w-2 h-2 bg-green-500 mr-2" />
         SAFE
       </span>
-    )
+    );
   }
 
   return (
@@ -317,7 +266,7 @@ function StatusBadge({ status }: { status: Invoice["status"] }) {
   );
 }
 
-function ActionButton({ status, onAction }: { status: Invoice["status"]; onAction: (type: "pay" | "block" | "verify") => void }) {
+function ActionButton({ status, onAction }: { status: Status; onAction: (type: "pay" | "block" | "verify") => void }) {
   if (status === "Failed") {
     return (
       <Button
@@ -350,7 +299,6 @@ function ActionButton({ status, onAction }: { status: Invoice["status"]; onActio
       size="sm"
       onClick={() => onAction('verify')}
       className="font-mono text-[10px] uppercase h-8 px-4 border-zinc-200 text-zinc-600 hover:text-black hover:border-black rounded-none transition-colors"
-
     >
       VERIFY
     </Button>

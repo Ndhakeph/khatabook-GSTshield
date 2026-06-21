@@ -3,6 +3,7 @@ import { Sidebar } from "./Sidebar";
 import { BottomNav } from "./BottomNav";
 import { CFOChatWidget } from "@/components/dashboard/CFOChatWidget";
 import { ScanReceiptModal } from "@/components/dashboard/ScanReceiptModal";
+import type { ComplianceRecord } from "@/lib/services/compliance-service";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -10,6 +11,7 @@ interface DashboardLayoutProps {
   isScanModalOpen?: boolean;
   onCloseScanModal?: () => void;
   onScanComplete?: () => void;
+  onSessionAdd?: (record: ComplianceRecord) => void;
 }
 
 export function DashboardLayout({
@@ -17,7 +19,8 @@ export function DashboardLayout({
   onScanClick,
   isScanModalOpen = false,
   onCloseScanModal,
-  onScanComplete
+  onScanComplete,
+  onSessionAdd
 }: DashboardLayoutProps) {
   const [internalScanOpen, setInternalScanOpen] = useState(false);
 
@@ -49,6 +52,7 @@ export function DashboardLayout({
         isOpen={scanOpen}
         onClose={handleCloseScan}
         onScanComplete={onScanComplete}
+        onSessionAdd={onSessionAdd}
       />
     </div>
   );

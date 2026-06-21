@@ -1,18 +1,12 @@
-
 import { NextResponse } from 'next/server';
-import { complianceService } from '@/lib/services/compliance-service';
+import { complianceService, computeStats } from '@/lib/services/compliance-service';
 
 export async function GET() {
     try {
-        const [recordsRes, statsRes] = await Promise.all([
-            complianceService.getComplianceRecords(),
-            complianceService.getStats()
-        ]);
+        const { records, source } = await complianceService.getComplianceRecords();
+        const stats = computeStats(records);
 
-        return NextResponse.json({
-            records: recordsRes.data || [],
-            stats: statsRes.data || { total_outstanding: 0, itc_at_risk: 0, safe_to_pay: 0 }
-        });
+        return NextResponse.json({ records, stats, source });
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         return NextResponse.json({ error: message }, { status: 500 });
@@ -25,12 +19,13 @@ export async function POST(req: Request) {
         const res = await complianceService.addComplianceRecord(body);
 
         if (!res.success) {
-            return NextResponse.json({ error: res.error }, { status: 500 });
+            // 503 signals the client to keep the record in its in-session list.
+            return NextResponse.json({ error: res.error }, { status: 503 });
         }
 
         return NextResponse.json(res.data);
     } catch {
-        return NextResponse.json({ error: "Invalid Request" }, { status: 400 });
+        return NextResponse.json({ error: 'Invalid Request' }, { status: 400 });
     }
 }
 
@@ -38,14 +33,14 @@ export async function PATCH(req: Request) {
     try {
         const body = await req.json();
         const { id, ...updates } = body;
-        if (!id) return NextResponse.json({ error: "Missing ID" }, { status: 400 });
+        if (!id) return NextResponse.json({ error: 'Missing ID' }, { status: 400 });
 
         const res = await complianceService.updateComplianceRecord(id, updates);
-        if (!res.success) return NextResponse.json({ error: res.error }, { status: 500 });
+        if (!res.success) return NextResponse.json({ error: res.error }, { status: 503 });
 
         return NextResponse.json(res.data);
     } catch {
-        return NextResponse.json({ error: "Invalid Request" }, { status: 400 });
+        return NextResponse.json({ error: 'Invalid Request' }, { status: 400 });
     }
 }
 
@@ -53,13 +48,13 @@ export async function DELETE(req: Request) {
     try {
         const { searchParams } = new URL(req.url);
         const id = searchParams.get('id');
-        if (!id) return NextResponse.json({ error: "Missing ID" }, { status: 400 });
+        if (!id) return NextResponse.json({ error: 'Missing ID' }, { status: 400 });
 
         const res = await complianceService.deleteComplianceRecord(id);
-        if (!res.success) return NextResponse.json({ error: res.error }, { status: 500 });
+        if (!res.success) return NextResponse.json({ error: res.error }, { status: 503 });
 
         return NextResponse.json({ success: true });
     } catch {
-        return NextResponse.json({ error: "Invalid Request" }, { status: 400 });
+        return NextResponse.json({ error: 'Invalid Request' }, { status: 400 });
     }
 }

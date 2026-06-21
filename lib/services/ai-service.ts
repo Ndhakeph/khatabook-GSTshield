@@ -13,17 +13,17 @@ export class AIService {
     async generateChatResponse(message: string): Promise<ServiceResponse<string>> {
         try {
             if (!process.env.FASTROUTER_API_KEY) {
-                return { success: false, error: 'FastRouter API Key is missing' };
+                return { success: false, error: 'NO_API_KEY' };
             }
 
-            // 1. Fetch Real-time Context from DB
+            // 1. Fetch context from DB (falls back to baked sample data on any error)
             const [statsRes, recordsRes] = await Promise.all([
                 complianceService.getStats(),
                 complianceService.getComplianceRecords()
             ]);
 
-            const stats = statsRes.data || { total_outstanding: 0, itc_at_risk: 0, safe_to_pay: 0 };
-            const records = recordsRes.data || [];
+            const stats = statsRes.stats;
+            const records = recordsRes.records;
 
             // Limit records context to top 10 to save tokens
             const recentbst = records.slice(0, 10).map(r =>
@@ -73,7 +73,7 @@ INSTRUCTIONS:
     async analyzeReceipt(base64Image: string, mimeType: string = 'image/jpeg'): Promise<ServiceResponse<Record<string, unknown>>> {
         try {
             if (!process.env.FASTROUTER_API_KEY) {
-                return { success: false, error: 'FastRouter API Key is missing' };
+                return { success: false, error: 'NO_API_KEY' };
             }
 
             const response = await fastRouter.chat.completions.create({

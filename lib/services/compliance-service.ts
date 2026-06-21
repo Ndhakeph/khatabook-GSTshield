@@ -1,6 +1,9 @@
-import { supabase } from '@/lib/db/supabase';
-import { supabaseAdmin } from '@/lib/db/supabase-admin';
+import { sql, isDatabaseConfigured } from '@/lib/db/neon';
+import { DEMO_RECORDS } from '@/lib/demo-data';
+import { computeStats } from '@/lib/stats';
 import { ServiceResponse } from './types';
+
+export { computeStats };
 
 export interface ComplianceRecord {
     id: string;
@@ -24,94 +27,113 @@ export interface ComplianceStats {
     safe_to_pay: number;
 }
 
+/** Where the returned data came from. 'sample' means the baked fallback is active. */
+export type DataSource = 'live' | 'sample';
+
+export interface RecordsResult {
+    records: ComplianceRecord[];
+    source: DataSource;
+}
+
+export interface StatsResult {
+    stats: ComplianceStats;
+    source: DataSource;
+}
+
+// Reads cast invoice_date to text in SQL so the driver never hands back a
+// timezone-shifted Date object.
+function toNumber(value: unknown): number {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : 0;
+}
+
+function normalizeRow(row: Record<string, unknown>): ComplianceRecord {
+    return {
+        id: String(row.id),
+        vendor_name: String(row.vendor_name ?? ''),
+        gstin: String(row.gstin ?? ''),
+        status: (row.status as ComplianceRecord['status']) ?? 'Pending',
+        amount: toNumber(row.amount),
+        invoice_date: String(row.invoice_date ?? ''),
+        taxable_value: toNumber(row.taxable_value),
+        cgst_amount: toNumber(row.cgst_amount),
+        sgst_amount: toNumber(row.sgst_amount),
+        igst_amount: toNumber(row.igst_amount),
+        cess_amount: toNumber(row.cess_amount),
+        invoice_number: row.invoice_number != null ? String(row.invoice_number) : undefined,
+        place_of_supply: row.place_of_supply != null ? String(row.place_of_supply) : undefined,
+    };
+}
+
 export class ComplianceService {
+    /**
+     * Read all records. Tries Neon first and falls back to baked sample data
+     * on any error or empty result, reporting which source was used.
+     */
+    async getComplianceRecords(): Promise<RecordsResult> {
+        if (!isDatabaseConfigured()) {
+            return { records: DEMO_RECORDS, source: 'sample' };
+        }
 
-    async getComplianceRecords(): Promise<ServiceResponse<ComplianceRecord[]>> {
         try {
-            const { data, error } = await supabase
-                .from('compliance_records')
-                .select('*')
-                .order('invoice_date', { ascending: false });
+            const rows = await sql`
+                SELECT id, vendor_name, gstin, status, amount,
+                    to_char(invoice_date, 'YYYY-MM-DD') AS invoice_date,
+                    taxable_value, cgst_amount, sgst_amount, igst_amount, cess_amount,
+                    invoice_number, place_of_supply
+                FROM compliance_records
+                ORDER BY invoice_date DESC, created_at DESC
+            `;
 
-            if (error) throw error;
+            if (!rows || rows.length === 0) {
+                return { records: DEMO_RECORDS, source: 'sample' };
+            }
 
-            return { success: true, data: data as ComplianceRecord[] };
+            return { records: rows.map(normalizeRow), source: 'live' };
         } catch (error: unknown) {
-            console.error('Error fetching compliance records:', error);
-            const message = error instanceof Error ? error.message : 'Unknown error';
-            return { success: false, error: message };
+            console.error('Neon read failed — serving sample data:', error);
+            return { records: DEMO_RECORDS, source: 'sample' };
         }
     }
 
-    async getStats(): Promise<ServiceResponse<ComplianceStats>> {
-        try {
-            const { data, error } = await supabase
-                .from('compliance_records')
-                .select('status, amount');
-
-            if (error) throw error;
-
-            const records = data || [];
-
-            const stats = records.reduce((acc, curr) => {
-                const amount = Number(curr.amount);
-                acc.total_outstanding += amount;
-
-                if (curr.status === 'Failed') {
-                    acc.itc_at_risk += amount;
-                } else if (curr.status === 'Safe') {
-                    acc.safe_to_pay += amount;
-                }
-
-                return acc;
-            }, { total_outstanding: 0, itc_at_risk: 0, safe_to_pay: 0 });
-
-            return { success: true, data: stats };
-
-        } catch (error: unknown) {
-            console.error('Error fetching stats:', error);
-            const message = error instanceof Error ? error.message : 'Unknown error';
-            return { success: false, error: message };
-        }
+    /** Derived stats over the current records (live or sample). */
+    async getStats(): Promise<StatsResult> {
+        const { records, source } = await this.getComplianceRecords();
+        return { stats: computeStats(records), source };
     }
 
+    /**
+     * Insert a scanned record. Returns success:false (never throws) when the
+     * database is unavailable so the caller can degrade to an in-session list.
+     */
     async addComplianceRecord(record: Partial<ComplianceRecord>): Promise<ServiceResponse<ComplianceRecord>> {
+        if (!record.vendor_name || !record.amount) {
+            return { success: false, error: 'Missing required fields' };
+        }
+
+        if (!isDatabaseConfigured()) {
+            return { success: false, error: 'Database not configured' };
+        }
+
         try {
-            // Basic validation
-            if (!record.vendor_name || !record.amount) {
-                throw new Error("Missing required fields");
-            }
+            const rows = await sql`
+                INSERT INTO compliance_records
+                    (vendor_name, gstin, status, amount, invoice_date,
+                     taxable_value, cgst_amount, sgst_amount, igst_amount, cess_amount,
+                     invoice_number, place_of_supply)
+                VALUES
+                    (${record.vendor_name}, ${record.gstin ?? ''}, ${record.status ?? 'Pending'},
+                     ${record.amount}, ${record.invoice_date ?? new Date().toISOString().split('T')[0]},
+                     ${record.taxable_value ?? 0}, ${record.cgst_amount ?? 0}, ${record.sgst_amount ?? 0},
+                     ${record.igst_amount ?? 0}, ${record.cess_amount ?? 0},
+                     ${record.invoice_number ?? 'UNKNOWN'}, ${record.place_of_supply ?? 'UNKNOWN'})
+                RETURNING id, vendor_name, gstin, status, amount,
+                    to_char(invoice_date, 'YYYY-MM-DD') AS invoice_date,
+                    taxable_value, cgst_amount, sgst_amount, igst_amount, cess_amount,
+                    invoice_number, place_of_supply
+            `;
 
-            // USE ADMIN CLIENT HERE TO BYPASS RLS IF AVAILABLE
-            const client = supabaseAdmin || supabase;
-
-            if (!supabaseAdmin) {
-                console.warn("Using public client for compliance insert. This may fail due to RLS.");
-            }
-
-            const { data, error } = await client
-                .from('compliance_records')
-                .insert([{
-                    vendor_name: record.vendor_name,
-                    gstin: record.gstin,
-                    status: record.status || 'Pending',
-                    amount: record.amount,
-                    invoice_date: record.invoice_date || new Date().toISOString().split('T')[0],
-                    taxable_value: record.taxable_value || 0,
-                    cgst_amount: record.cgst_amount || 0,
-                    sgst_amount: record.sgst_amount || 0,
-                    igst_amount: record.igst_amount || 0,
-                    cess_amount: record.cess_amount || 0,
-                    invoice_number: record.invoice_number || 'UNKNOWN',
-                    place_of_supply: record.place_of_supply || 'UNKNOWN'
-                }])
-                .select()
-                .single();
-
-            if (error) throw error;
-
-            return { success: true, data: data as ComplianceRecord };
-
+            return { success: true, data: normalizeRow(rows[0]) };
         } catch (error: unknown) {
             console.error('Error adding compliance record:', error);
             const message = error instanceof Error ? error.message : 'Unknown error';
@@ -120,17 +142,30 @@ export class ComplianceService {
     }
 
     async updateComplianceRecord(id: string, updates: Partial<ComplianceRecord>): Promise<ServiceResponse<ComplianceRecord>> {
-        try {
-            const client = supabaseAdmin || supabase;
-            const { data, error } = await client
-                .from('compliance_records')
-                .update(updates)
-                .eq('id', id)
-                .select()
-                .single();
+        if (!isDatabaseConfigured()) {
+            return { success: false, error: 'Database not configured' };
+        }
 
-            if (error) throw error;
-            return { success: true, data: data as ComplianceRecord };
+        try {
+            const rows = await sql`
+                UPDATE compliance_records SET
+                    vendor_name = COALESCE(${updates.vendor_name ?? null}::text, vendor_name),
+                    gstin = COALESCE(${updates.gstin ?? null}::text, gstin),
+                    status = COALESCE(${updates.status ?? null}::text, status),
+                    amount = COALESCE(${updates.amount ?? null}::numeric, amount),
+                    invoice_date = COALESCE(${updates.invoice_date ?? null}::date, invoice_date)
+                WHERE id = ${id}
+                RETURNING id, vendor_name, gstin, status, amount,
+                    to_char(invoice_date, 'YYYY-MM-DD') AS invoice_date,
+                    taxable_value, cgst_amount, sgst_amount, igst_amount, cess_amount,
+                    invoice_number, place_of_supply
+            `;
+
+            if (!rows || rows.length === 0) {
+                return { success: false, error: 'Record not found' };
+            }
+
+            return { success: true, data: normalizeRow(rows[0]) };
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : 'Unknown error';
             return { success: false, error: message };
@@ -138,14 +173,12 @@ export class ComplianceService {
     }
 
     async deleteComplianceRecord(id: string): Promise<ServiceResponse<boolean>> {
-        try {
-            const client = supabaseAdmin || supabase;
-            const { error } = await client
-                .from('compliance_records')
-                .delete()
-                .eq('id', id);
+        if (!isDatabaseConfigured()) {
+            return { success: false, error: 'Database not configured' };
+        }
 
-            if (error) throw error;
+        try {
+            await sql`DELETE FROM compliance_records WHERE id = ${id}`;
             return { success: true, data: true };
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : 'Unknown error';

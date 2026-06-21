@@ -1,78 +1,82 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { ComplianceTable } from "@/components/dashboard/ComplianceTable";
-import { ShieldAlert, TrendingUp, ScanLine } from "lucide-react";
+import { ShieldAlert, TrendingUp, ScanLine, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { computeStats } from "@/lib/stats";
+import type { ComplianceRecord, DataSource } from "@/lib/services/compliance-service";
 
 const Index = () => {
   const [isScanModalOpen, setIsScanModalOpen] = useState(false);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [stats, setStats] = useState({
-    total_outstanding: 0,
-    itc_at_risk: 0,
-    safe_to_pay: 0
-  });
 
-  const fetchStats = async () => {
+  const [serverRecords, setServerRecords] = useState<ComplianceRecord[]>([]);
+  const [sessionRecords, setSessionRecords] = useState<ComplianceRecord[]>([]);
+  const [source, setSource] = useState<DataSource>("live");
+  const [loading, setLoading] = useState(true);
+
+  // In-session scans first, then whatever the server/baked fallback returned.
+  const records = useMemo(
+    () => [...sessionRecords, ...serverRecords],
+    [sessionRecords, serverRecords],
+  );
+  const stats = useMemo(() => computeStats(records), [records]);
+
+  const fetchData = useCallback(async () => {
     try {
-      const res = await fetch('/api/compliance');
+      const res = await fetch("/api/compliance");
       const data = await res.json();
-      if (data.stats) {
-        setStats(data.stats);
-      }
+      setServerRecords(Array.isArray(data.records) ? data.records : []);
+      setSource((data.source as DataSource) || "live");
     } catch (e) {
-      console.error("Failed to fetch stats", e);
+      console.error("Failed to fetch compliance data", e);
+    } finally {
+      setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchStats();
-  }, [refreshTrigger]);
+    fetchData();
+  }, [fetchData]);
 
-  const handleRefresh = () => {
-    setRefreshTrigger(prev => prev + 1);
-  };
+  // A scanned receipt that couldn't reach the DB lives in this session only.
+  const handleSessionAdd = useCallback((record: ComplianceRecord) => {
+    setSessionRecords((prev) => [record, ...prev]);
+  }, []);
+
+  const handleRemove = useCallback((id: string) => {
+    setSessionRecords((prev) => prev.filter((r) => r.id !== id));
+    setServerRecords((prev) => prev.filter((r) => r.id !== id));
+  }, []);
+
+  const handleVerify = useCallback((id: string) => {
+    const mark = (r: ComplianceRecord): ComplianceRecord =>
+      r.id === id ? { ...r, status: "Safe" } : r;
+    setSessionRecords((prev) => prev.map(mark));
+    setServerRecords((prev) => prev.map(mark));
+  }, []);
 
   const handleExportCSV = async () => {
     setIsExporting(true);
     try {
-      const res = await fetch('/api/compliance');
-      const data = await res.json();
-
-      if (!data.records) throw new Error("No data");
-
-      // Simple CSV conversion
       const headers = ["Invoice ID", "Date", "Vendor", "GSTIN", "Amount", "Status"];
-      const rows = data.records.map((r: Record<string, unknown>) => [
-        r.id,
-        r.invoice_date,
-        r.vendor_name,
-        r.gstin,
-        r.amount,
-        r.status
-      ]);
-
-      const csvContent = [
-        headers.join(","),
-        ...rows.map((row: unknown[]) => row.join(","))
-      ].join("\n");
+      const rows = records.map((r) => [r.id, r.invoice_date, r.vendor_name, r.gstin, r.amount, r.status]);
+      const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
 
       const blob = new Blob([csvContent], { type: "text/csv" });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `compliance_export_${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `compliance_export_${new Date().toISOString().split("T")[0]}.csv`;
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (e) {
       console.error("Export failed", e);
-      alert("Failed to export CSV");
     } finally {
       setIsExporting(false);
     }
@@ -81,15 +85,12 @@ const Index = () => {
   const handleGenerateGSTR = async () => {
     setIsGenerating(true);
     try {
-      // Default to Jan 2024 for demo purposes as per seed data
+      // Default to Jan 2024 — matches the seeded / baked sample period.
       const month = 1;
       const year = 2024;
 
       const response = await fetch(`/api/gstr3b?month=${month}&year=${year}`);
-
-      if (!response.ok) {
-        throw new Error("Failed to generate report");
-      }
+      if (!response.ok) throw new Error("Failed to generate report");
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -100,10 +101,8 @@ const Index = () => {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-
     } catch (e) {
       console.error("GSTR Generation Error", e);
-      alert("Failed to generate GSTR-3B Report");
     } finally {
       setIsGenerating(false);
     }
@@ -111,28 +110,23 @@ const Index = () => {
 
   const handleSyncTally = () => {
     setIsSyncing(true);
-    // Mock Delay
-    setTimeout(() => {
-      setIsSyncing(false);
-      alert("Synced successfully with Tally Prime!");
-    }, 2500);
+    setTimeout(() => setIsSyncing(false), 2500);
   };
 
-  const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat("en-IN", {
+  const formatCurrency = (val: number) =>
+    new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
       minimumFractionDigits: 0,
     }).format(val);
-  };
-
 
   return (
     <DashboardLayout
       onScanClick={() => setIsScanModalOpen(true)}
       isScanModalOpen={isScanModalOpen}
       onCloseScanModal={() => setIsScanModalOpen(false)}
-      onScanComplete={handleRefresh}
+      onScanComplete={fetchData}
+      onSessionAdd={handleSessionAdd}
     >
       {/* Page Header */}
       <div className="mb-8">
@@ -150,9 +144,12 @@ const Index = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="font-mono text-[10px] text-muted-foreground">
-              LAST SYNC: JUST NOW
-            </div>
+            {source === "sample" && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-amber-300 bg-amber-50 text-amber-700 font-mono text-[10px] uppercase tracking-wider">
+                <Database className="h-3 w-3" />
+                Sample Data
+              </span>
+            )}
             <Button
               onClick={() => setIsScanModalOpen(true)}
               className="font-mono text-xs gap-2"
@@ -186,7 +183,13 @@ const Index = () => {
       </div>
 
       {/* Compliance Table */}
-      <ComplianceTable key={refreshTrigger} onStatsRefresh={fetchStats} />
+      <ComplianceTable
+        records={records}
+        loading={loading}
+        source={source}
+        onRemove={handleRemove}
+        onVerify={handleVerify}
+      />
 
       {/* Quick Actions */}
       <div className="mt-8 border border-dotted border-foreground/30 p-4">
@@ -225,7 +228,7 @@ const Index = () => {
             variant="outline"
             size="sm"
             className="font-mono text-[10px]"
-            onClick={handleRefresh}
+            onClick={fetchData}
           >
             REFRESH ALL
           </Button>
