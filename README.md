@@ -2,7 +2,7 @@
 
 A proactive GST compliance checker that validates vendor tax status before payment, built for Indian freelancers and small businesses.
 
-[![Live Demo](https://img.shields.io/badge/Live_Demo-Visit_Site-blue?style=for-the-badge)](https://khatabook-ai-hackathon.vercel.app/)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Visit_Site-blue?style=for-the-badge)](https://khatabook-gst-shield.vercel.app/)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
